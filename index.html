@@ -787,6 +787,26 @@ body.role-limb .tab[data-tab="track"] { display: flex !important; }
   opacity: 0.38;
   pointer-events: none;
 }
+.acct-note {
+  background: #FFF8EE;
+  border: 1.5px solid #F0D8B0;
+  border-radius: 14px;
+  padding: 12px;
+  margin: 12px 0 8px;
+  font-size: 13px;
+  color: var(--text-lt);
+  line-height: 1.45;
+}
+.acct-note strong { color: var(--text); }
+.acct-fee-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--sage-pale);
+}
+.acct-fee-row:last-child { border-bottom: none; }
 
 /* Font themes */
 
@@ -2662,6 +2682,7 @@ a:focus:not(:focus-visible) { outline: none; }
           </button>
           <button class="header-btn parent-only" id="btn-inbox" title="Care inbox" aria-label="Care inbox">Inbox <span class="inbox-badge" id="inbox-badge" hidden>0</span></button>
           <button class="header-btn limb-only" id="btn-care-summary" title="Send care summary" hidden>📝 <span class="btn-label">Summary</span></button>
+          <button class="header-btn" id="btn-acct" title="Care accountability" aria-label="Care accountability" hidden>✔</button>
           <button class="header-btn" id="btn-settings" title="Settings" aria-label="Settings">⚙</button>
         </div>
       </header>
@@ -3203,6 +3224,15 @@ a:focus:not(:focus-visible) { outline: none; }
             </div>
           </div>
 
+          <div class="acct-note" id="alert-acct-note" hidden>
+            <strong>Accountability Fee</strong>
+            <p style="margin-top:6px">If this request isn’t completed in time — or before clock-out — the app may apply a $1.99 accountability check. The helper can request a waiver until Sunday. They will see it as an app care-check, not as a charge from you.</p>
+            <div class="settings-row" style="border:none;padding:8px 0 0">
+              <span>Apply Accountability Fee to this request</span>
+              <div class="toggle on" id="alert-acct-toggle"></div>
+            </div>
+          </div>
+
           <button type="button" class="btn-primary full" id="alert-send-btn" style="margin-top:12px">Send alert</button>
         </div>
       </div>
@@ -3262,6 +3292,15 @@ a:focus:not(:focus-visible) { outline: none; }
           </div>
           <label class="field-label" for="limb-scripture-time">Preferred time</label>
           <input type="time" id="limb-scripture-time" class="text-input" value="15:00" />
+
+          <div class="acct-note" id="limb-acct-consent" hidden>
+            <strong>Care Accountability</strong>
+            <p style="margin-top:6px">This home uses the app’s care-check. If a requested care step isn’t logged in time, a $1.99 accountability fee may apply. You can request a waiver until the end of that week.</p>
+            <div class="settings-row" style="border:none;padding:8px 0 0">
+              <span>I understand Care Accountability</span>
+              <div class="toggle" id="limb-acct-agree"></div>
+            </div>
+          </div>
 
           <button type="button" class="btn-primary full" id="limb-invite-submit" style="margin-top:12px">Join village</button>
           <button type="button" class="btn-ghost full" id="limb-invite-cancel" style="margin-top:8px">Back</button>
@@ -3536,6 +3575,15 @@ a:focus:not(:focus-visible) { outline: none; }
           </div>
           <p class="field-note">Limb-only and shared reminders help babysitters and family stay on the same care plan.</p>
 
+          <div class="acct-note" id="rem-acct-note" hidden>
+            <strong>Accountability Fee</strong>
+            <p style="margin-top:6px">If this care step isn’t logged in time — or before the Limb clocks out — the app may apply a $1.99 accountability check. The helper can request a waiver until Sunday. They will see it as an app care-check, not as a charge from you.</p>
+            <div class="settings-row" style="border:none;padding:8px 0 0">
+              <span>Apply Accountability Fee to this reminder</span>
+              <div class="toggle on" id="rem-acct-toggle"></div>
+            </div>
+          </div>
+
           <label class="field-label">Notify</label>
           <div class="settings-row" style="border:none;padding:8px 0">
             <span>Also push-notify assignees</span>
@@ -3552,6 +3600,19 @@ a:focus:not(:focus-visible) { outline: none; }
     <a href="#" id="corner-mark" class="corner-mark" title="In the Middle of the [Mess]age" aria-label="In the Middle of the [Mess]age">
       <img src="logo-main.jpg" alt="In the Middle of the [Mess]age" />
     </a>
+
+    <div class="modal-overlay" id="modal-acct" hidden>
+      <div class="modal sheet">
+        <div class="modal-head">
+          <div>
+            <h2>Care accountability</h2>
+            <p class="muted" id="acct-modal-sub">The app’s care-check for this shift</p>
+          </div>
+          <button class="modal-close" type="button" data-close="acct">Close</button>
+        </div>
+        <div class="modal-body" id="acct-modal-body"></div>
+      </div>
+    </div>
 
     <!-- Toast -->
     <div class="toast" id="toast" hidden></div>
@@ -4573,6 +4634,17 @@ a:focus:not(:focus-visible) { outline: none; }
     if (!code) return showAuthError("limb-error", "Enter the invite code from the parent.");
     const parentId = findParentIdByInviteCode(code);
     if (!parentId) return showAuthError("limb-error", "That invite code is not valid. Ask the parent for the code from their Village screen.");
+    try {
+      const rawH = localStorage.getItem("mh_household_" + parentId);
+      const hh = rawH ? JSON.parse(rawH) : {};
+      const consent = $("#limb-acct-consent");
+      if (hh && hh.accountabilityFee) {
+        if (consent) consent.hidden = false;
+        if (!$("#limb-acct-agree")?.classList.contains("on")) {
+          return showAuthError("limb-error", "This home uses Care Accountability. Confirm you understand to join.");
+        }
+      }
+    } catch (e) {}
     if (!firstName) return showAuthError("limb-error", "First name is required.");
     if (!isValidEmail(email)) return showAuthError("limb-error", "Enter a valid email address.");
     if (!isValidPhone(phoneRaw)) return showAuthError("limb-error", "Enter a valid phone number (at least 10 digits).");
@@ -5417,7 +5489,16 @@ a:focus:not(:focus-visible) { outline: none; }
     return null;
   }
   function emptyHousehold() {
-    return { trackingEnabled: true, limbUpdateMode: "endshift", activeShift: null, pastShifts: [] };
+    return {
+      trackingEnabled: true,
+      limbUpdateMode: "endshift",
+      activeShift: null,
+      pastShifts: [],
+      accountabilityFee: false,
+      accountabilityGraceMins: 20,
+      careTasks: [],
+      fees: [],
+    };
   }
   function loadHousehold() {
     const id = householdId();
@@ -5521,6 +5602,7 @@ a:focus:not(:focus-visible) { outline: none; }
     h.activeShift.events = h.activeShift.events || [];
     h.activeShift.events.push(ev);
     saveHousehold(h);
+    markCareTasksFromLog(label, note);
     if (h.limbUpdateMode === "realtime") {
       pushToParentInbox({
         id: "live-" + Date.now(),
@@ -5577,6 +5659,8 @@ a:focus:not(:focus-visible) { outline: none; }
       return;
     }
     h.activeShift.endedAt = new Date().toISOString();
+    saveHousehold(h);
+    const missed = checkMissedCareTasks({ clockOut: true });
     const events = h.activeShift.events || [];
     const lines = events.length
       ? events.map((e) => (e.label || "Log") + (e.dur ? " (" + e.dur + ")" : "") + (e.note ? " — " + e.note : "")).join("\n")
@@ -5594,12 +5678,18 @@ a:focus:not(:focus-visible) { outline: none; }
       read: false,
       kind: "shift-end",
     });
-    h.pastShifts = (h.pastShifts || []).slice(0, 19);
-    h.pastShifts.unshift(h.activeShift);
-    h.activeShift = null;
-    saveHousehold(h);
+    const fresh = loadHousehold();
+    fresh.pastShifts = (fresh.pastShifts || []).slice(0, 19);
+    if (fresh.activeShift) fresh.pastShifts.unshift(fresh.activeShift);
+    fresh.activeShift = null;
+    saveHousehold(fresh);
     applyClockGate();
-    toast(h.limbUpdateMode === "realtime" ? "Clocked out · parents had live updates" : "Clocked out · log sent to parents");
+    if (missed.length) {
+      toast("Shift ended · Care Accountability has a follow-up");
+      setTimeout(() => openAcctModal(), 400);
+    } else {
+      toast(h.limbUpdateMode === "realtime" ? "Clocked out · parents had live updates" : "Clocked out · log sent to parents");
+    }
   }
   function requireLimbClock(action) {
     if (isLimbRole() && !limbCanTrack()) {
@@ -5608,6 +5698,203 @@ a:focus:not(:focus-visible) { outline: none; }
       return false;
     }
     return true;
+  }
+
+  const ACCT_FEE = 1.99;
+  function endOfThisWeek() {
+    const d = new Date();
+    const day = d.getDay();
+    const add = day === 0 ? 0 : 7 - day;
+    d.setDate(d.getDate() + add);
+    d.setHours(23, 59, 59, 999);
+    return d.toISOString();
+  }
+  function weekOpen(iso) {
+    return !iso || Date.now() <= new Date(iso).getTime();
+  }
+  function householdAccountabilityOn() {
+    return !!loadHousehold().accountabilityFee;
+  }
+  function showAcctNotes() {
+    const on = !isLimbRole() && householdAccountabilityOn();
+    const rem = $("#rem-acct-note");
+    const alertN = $("#alert-acct-note");
+    if (rem) rem.hidden = !on;
+    if (alertN) alertN.hidden = !on;
+    if (on) {
+      $("#rem-acct-toggle")?.classList.add("on");
+      $("#alert-acct-toggle")?.classList.add("on");
+    }
+  }
+  function addCareTask(partial) {
+    const h = loadHousehold();
+    if (!h.accountabilityFee && !partial.acct) return null;
+    const task = {
+      id: "ct_" + Date.now().toString(36),
+      kind: partial.kind || "request",
+      label: partial.label || "Care step",
+      type: partial.type || "misc",
+      dueAt: partial.dueAt || new Date().toISOString(),
+      graceMins: h.accountabilityGraceMins || 20,
+      createdAt: new Date().toISOString(),
+      doneAt: null,
+      acct: partial.acct !== false,
+      shiftId: (h.activeShift && h.activeShift.id) || null,
+    };
+    h.careTasks = h.careTasks || [];
+    h.careTasks.push(task);
+    saveHousehold(h);
+    return task;
+  }
+  function reminderDueAt(rem) {
+    const now = new Date();
+    const [hh, mm] = String(rem.time || "08:00").split(":").map((n) => Number(n) || 0);
+    const d = rem.repeat === "once" && rem.date ? new Date(rem.date + "T00:00:00") : new Date();
+    d.setHours(hh, mm, 0, 0);
+    if (rem.repeat !== "once" && d.getTime() < now.getTime() - 60000) d.setDate(d.getDate() + 1);
+    return d.toISOString();
+  }
+  function markCareTasksFromLog(label, note) {
+    const h = loadHousehold();
+    if (!h.careTasks || !h.careTasks.length) return;
+    const blob = String(label || "").toLowerCase() + " " + String(note || "").toLowerCase();
+    let changed = false;
+    h.careTasks.forEach((t) => {
+      if (t.doneAt) return;
+      const key = String(t.type || "").toLowerCase();
+      const lab = String(t.label || "").toLowerCase();
+      if ((key && blob.includes(key)) || (lab && blob.includes(lab)) || (key && String(label || "").toLowerCase().includes(key))) {
+        t.doneAt = new Date().toISOString();
+        changed = true;
+      }
+    });
+    if (changed) saveHousehold(h);
+  }
+  function assessAccountabilityFee(task, why) {
+    const h = loadHousehold();
+    if (!h.accountabilityFee || !task || task.acct === false) return null;
+    h.fees = h.fees || [];
+    if (h.fees.some((f) => f.taskId === task.id && f.status !== "waived")) return null;
+    const shift = h.activeShift || {};
+    const fee = {
+      id: "fee_" + Date.now().toString(36),
+      taskId: task.id,
+      limbId: shift.limbId || (currentAccount && currentAccount.id) || "",
+      limbName: shift.limbName || (profile.userName || "Limb"),
+      label: task.label,
+      why: why || "A requested care step was not logged in time.",
+      amount: ACCT_FEE,
+      createdAt: new Date().toISOString(),
+      weekEnd: endOfThisWeek(),
+      status: "due",
+    };
+    h.fees.unshift(fee);
+    saveHousehold(h);
+    return fee;
+  }
+  function checkMissedCareTasks(opts) {
+    opts = opts || {};
+    const h = loadHousehold();
+    if (!h.accountabilityFee) return [];
+    const now = Date.now();
+    const created = [];
+    (h.careTasks || []).forEach((t) => {
+      if (t.doneAt || t.acct === false) return;
+      const due = new Date(t.dueAt).getTime();
+      const grace = (t.graceMins || h.accountabilityGraceMins || 20) * 60000;
+      const missedWindow = now > due + grace;
+      const missedAtClockOut = !!opts.clockOut && now >= due;
+      if (missedWindow || missedAtClockOut) {
+        const fee = assessAccountabilityFee(t, missedAtClockOut
+          ? "This care step was still open when the shift ended."
+          : "This care step was not logged within the expected window.");
+        if (fee) created.push(fee);
+      }
+    });
+    return created;
+  }
+  function limbOpenFees() {
+    const h = loadHousehold();
+    const id = currentAccount && currentAccount.id;
+    return (h.fees || []).filter((f) => (!id || f.limbId === id) && (f.status === "due" || f.status === "waiver-requested"));
+  }
+  function requestFeeWaiver(feeId) {
+    const h = loadHousehold();
+    const fee = (h.fees || []).find((f) => f.id === feeId);
+    if (!fee) return;
+    if (!weekOpen(fee.weekEnd)) {
+      toast("The waiver window for this week has closed");
+      return;
+    }
+    fee.status = "waiver-requested";
+    saveHousehold(h);
+    toast("Waiver requested · Care Accountability reviews these through Sunday");
+    renderAcctModal();
+  }
+  function setFeeStatus(feeId, status) {
+    const h = loadHousehold();
+    const fee = (h.fees || []).find((f) => f.id === feeId);
+    if (!fee) return;
+    fee.status = status;
+    saveHousehold(h);
+    if (!isLimbRole()) renderSettings();
+    else renderAcctModal();
+  }
+  function renderAcctModal() {
+    const body = $("#acct-modal-body");
+    if (!body) return;
+    const fees = isLimbRole() ? limbOpenFees().concat((loadHousehold().fees || []).filter((f) => f.limbId === (currentAccount && currentAccount.id) && (f.status === "waived" || f.status === "paid")).slice(0, 4)) : (loadHousehold().fees || []);
+    if (!fees.length) {
+      body.innerHTML = '<p class="field-note">No accountability items right now. Requested care steps that are logged in time stay clear.</p>';
+      return;
+    }
+    body.innerHTML = fees.map((f) => {
+      const open = weekOpen(f.weekEnd);
+      const due = f.status === "due" || f.status === "waiver-requested";
+      let actions = "";
+      if (isLimbRole() && f.status === "due" && open) {
+        actions = `<button type="button" class="btn-primary" data-waiver="${f.id}">Request waiver</button>
+          <button type="button" class="btn-ghost" data-pay="${f.id}">Resolve $1.99</button>`;
+      } else if (isLimbRole() && f.status === "waiver-requested") {
+        actions = `<p class="field-note" style="margin:8px 0 0">Waiver requested. Care Accountability reviews these through Sunday.</p>`;
+      } else if (!isLimbRole() && due) {
+        actions = `<button type="button" class="btn-primary" data-waive="${f.id}">Waive this check</button>`;
+      }
+      const statusLabel = f.status === "waived" ? "Released" : f.status === "paid" ? "Resolved" : f.status === "waiver-requested" ? "Review pending" : "Open";
+      return `<div class="acct-fee-row">
+        <div>
+          <strong>${escapeHtml(f.label)}</strong>
+          <p class="field-note" style="margin:4px 0 0">${escapeHtml(f.why)} · $${f.amount.toFixed(2)} · ${statusLabel}</p>
+        </div>
+        <div>${actions}</div>
+      </div>`;
+    }).join("");
+    $$("#acct-modal-body [data-waiver]").forEach((b) => b.addEventListener("click", () => requestFeeWaiver(b.dataset.waiver)));
+    $$("#acct-modal-body [data-pay]").forEach((b) => b.addEventListener("click", () => {
+      setFeeStatus(b.dataset.pay, "paid");
+      toast("Accountability check resolved · thank you");
+    }));
+    $$("#acct-modal-body [data-waive]").forEach((b) => {
+      b.addEventListener("click", () => {
+        setFeeStatus(b.dataset.waive, "waived");
+        toast("Released · the helper will see an app review, not your name");
+      });
+    });
+  }
+  function openAcctModal() {
+    renderAcctModal();
+    openModal("acct");
+    const fees = limbOpenFees();
+    if (isLimbRole() && fees.length) {
+      $("#acct-modal-sub").textContent = "A requested care step was not logged in time. This is the app’s care-check — it helps match the care plan on file.";
+    } else if (!isLimbRole()) {
+      $("#acct-modal-sub").textContent = "Quiet review of missed care steps. Waiving never names you to the Limb.";
+    }
+  }
+  function maybeShowLimbFees() {
+    if (!isLimbRole()) return;
+    const fees = limbOpenFees();
+    if (fees.length) setTimeout(() => openAcctModal(), 700);
   }
 
   function needsPumpTip() {
@@ -6453,6 +6740,12 @@ a:focus:not(:focus-visible) { outline: none; }
         <button type="button" class="date-chip${profile.limbUpdateMode!=="realtime"?" active":""}" data-upd="endshift">Log after they clock out</button>
       </div>
       <p class="field-note">Real-time sends each log to your Care inbox. Otherwise you get one summary when they clock out.</p>
+      <div class="settings-row">
+        <span>Accountability Fee</span>
+        <div class="toggle${loadHousehold().accountabilityFee ? " on" : ""}" id="tog-acct-fee"></div>
+      </div>
+      <p class="field-note" style="margin-top:-4px">If a Limb misses a reminder or care request in time — or clocks out with it unfinished — the app may apply a $1.99 care-check. They can request a waiver until Sunday. They will not be told the fee comes from you.</p>
+      <button type="button" class="btn-ghost full" id="btn-acct-parent" style="margin-top:6px">Review accountability items</button>
       `}
       <div class="settings-row">
         <span>Milestones</span>
@@ -6544,6 +6837,15 @@ a:focus:not(:focus-visible) { outline: none; }
       saveProfile();
       toast(profile.notifySms ? "Confirmation texts on" : "Texts off");
     });
+    $("#tog-acct-fee")?.addEventListener("click", () => {
+      const el = $("#tog-acct-fee");
+      el.classList.toggle("on");
+      const h = loadHousehold();
+      h.accountabilityFee = el.classList.contains("on");
+      saveHousehold(h);
+      toast(h.accountabilityFee ? "Accountability Fee on · $1.99 if a requested care step is missed" : "Accountability Fee off");
+    });
+    $("#btn-acct-parent")?.addEventListener("click", openAcctModal);
     $("#tog-parent-track")?.addEventListener("click", () => {
       const el = $("#tog-parent-track");
       el.classList.toggle("on");
@@ -7460,6 +7762,11 @@ a:focus:not(:focus-visible) { outline: none; }
     document.body.classList.toggle("role-parent", role === "parent");
     applyTrackingVisibility();
     applyClockGate();
+    const acctBtn = $("#btn-acct");
+    if (acctBtn) {
+      const show = isLimbRole() ? limbOpenFees().length > 0 : (!isLimbRole() && householdAccountabilityOn());
+      acctBtn.hidden = !show;
+    }
     // Limb: Track + Updates + Calendar only
     if (role === "limb") {
       showTab("track");
@@ -7478,6 +7785,7 @@ a:focus:not(:focus-visible) { outline: none; }
       const limbTrack = $("#track-care-limb");
       if (limbTrack) limbTrack.hidden = false;
       setTimeout(() => deliverPendingLimbAlerts(), 600);
+      setTimeout(() => maybeShowLimbFees(), 900);
     } else {
       const ban = $("#limb-mode-banner");
       if (ban) ban.hidden = true;
@@ -7529,6 +7837,7 @@ a:focus:not(:focus-visible) { outline: none; }
         });
       });
     }
+    showAcctNotes();
     openModal("limb-alert-send");
   }
 
@@ -7556,11 +7865,23 @@ a:focus:not(:focus-visible) { outline: none; }
       from: (profile.userName || (currentAccount && currentAccount.firstName) || "Parent"),
       at: new Date().toISOString(),
       done: false,
+      acct: !!(householdAccountabilityOn() && $("#alert-acct-toggle")?.classList.contains("on")),
     };
     pendingLimbAlerts.push(alert);
     try {
       localStorage.setItem("mh_limb_alerts", JSON.stringify(pendingLimbAlerts));
     } catch (e) {}
+    if (alert.acct) {
+      const due = new Date();
+      due.setMinutes(due.getMinutes() + (loadHousehold().accountabilityGraceMins || 20));
+      addCareTask({
+        kind: "request",
+        label: alert.typeLabel,
+        type: alert.type,
+        dueAt: due.toISOString(),
+        acct: true,
+      });
+    }
     closeModal("limb-alert-send");
     const channels = [chApp ? "app popup" : null, chSms ? "text" : null].filter(Boolean).join(" + ");
     toast(`Alert sent to ${to.join(", ")} · ${channels}`);
@@ -7610,6 +7931,8 @@ a:focus:not(:focus-visible) { outline: none; }
       localStorage.setItem("mh_limb_alerts", JSON.stringify(pendingLimbAlerts));
     } catch (e) {}
     if (overlay) overlay.hidden = true;
+    const doneAlert = pendingLimbAlerts.find((a) => a.id === id);
+    if (doneAlert) markCareTasksFromLog(doneAlert.typeLabel || doneAlert.type, doneAlert.note || "");
     toast("Marked done · parent notified");
     // show next pending if any
     setTimeout(() => deliverPendingLimbAlerts(), 400);
@@ -8182,6 +8505,7 @@ a:focus:not(:focus-visible) { outline: none; }
     $$("#rem-for-chips .date-chip").forEach((c) => c.classList.toggle("active", c.dataset.for === remFor));
     updateRemDateVisibility();
     $("#rem-delete").hidden = !r;
+    showAcctNotes();
     openModal("reminder");
   }
 
@@ -8212,6 +8536,7 @@ a:focus:not(:focus-visible) { outline: none; }
       note: $("#rem-note").value.trim(),
       notify: $("#rem-notify-toggle").classList.contains("on"),
       for: remFor || "parent",
+      acct: !!(householdAccountabilityOn() && $("#rem-acct-toggle")?.classList.contains("on") && remFor !== "parent"),
     };
     if (editingRemId) {
       careReminders = careReminders.map((r) => (r.id === editingRemId ? payload : r));
@@ -8221,6 +8546,15 @@ a:focus:not(:focus-visible) { outline: none; }
     closeModal("reminder");
     renderCareReminders();
     if (typeof saveAppData === "function") saveAppData();
+    if (payload.acct && (payload.for === "limb" || payload.for === "both")) {
+      addCareTask({
+        kind: "reminder",
+        label: payload.label,
+        type: payload.type,
+        dueAt: reminderDueAt(payload),
+        acct: true,
+      });
+    }
     toast(editingRemId ? "Reminder updated" : "Reminder scheduled");
   }
 
@@ -8328,6 +8662,25 @@ a:focus:not(:focus-visible) { outline: none; }
     $("#go-track")?.addEventListener("click", () => showTab("track"));
     $("#btn-clock-in")?.addEventListener("click", clockInShift);
     $("#btn-clock-out")?.addEventListener("click", clockOutShift);
+    $("#btn-acct")?.addEventListener("click", openAcctModal);
+    $("#rem-acct-toggle")?.addEventListener("click", () => $("#rem-acct-toggle").classList.toggle("on"));
+    $("#alert-acct-toggle")?.addEventListener("click", () => $("#alert-acct-toggle").classList.toggle("on"));
+    $("#limb-acct-agree")?.addEventListener("click", () => $("#limb-acct-agree").classList.toggle("on"));
+    $("#limb-invite-code")?.addEventListener("change", () => {
+      const code = ($("#limb-invite-code").value || "").trim().toUpperCase();
+      const pid = findParentIdByInviteCode(code);
+      const box = $("#limb-acct-consent");
+      if (!box) return;
+      if (!pid) { box.hidden = true; return; }
+      try {
+        const raw = localStorage.getItem("mh_household_" + pid);
+        const hh = raw ? JSON.parse(raw) : {};
+        box.hidden = !hh.accountabilityFee;
+      } catch (e) { box.hidden = true; }
+    });
+    setInterval(() => {
+      if (isLimbRole() && limbCanTrack()) checkMissedCareTasks();
+    }, 60000);
 
     // Subtabs
     $$(".subtab").forEach((s) => {
