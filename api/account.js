@@ -19,8 +19,8 @@ function addLimbToVillage(vault, limb) {
   );
   const row = existing || {};
   row.id = row.id || "l_" + Date.now().toString(36);
-  row.name = (limb && limb.firstName) || row.name || "Limb";
-  row.relation = row.relation || "Limb";
+  row.name = (limb && limb.firstName) || row.name || "Villager";
+  row.relation = row.relation || "Villager";
   row.email = (limb && limb.email) || row.email || "";
   row.phone = (limb && limb.phone) || row.phone || "";
   row.active = true;
@@ -107,7 +107,7 @@ module.exports = async function handler(req, res) {
       );
     } else {
       const who = user.firstName || "Someone";
-      const kind = user.role === "limb" ? "Limb" : "parent";
+      const kind = user.role === "limb" ? "Villager" : "parent";
       await sms.notifyOwner(db, who + " just started using the app as a " + kind + ".");
     }
     await dbx.save(db);

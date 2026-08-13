@@ -19,10 +19,10 @@ function parentEmailText(name) {
     "",
     "What you can do",
     "• Home: a simple day view, greetings, and what matters right now.",
-    "• Track: diapers, feeding, sleep, medicine, play, growth, and age-matched milestones. You can hide tracking on your own Home; Limb helpers still see it so they can log care.",
-    "• Village: invite trusted people (Limbs) with a household code. They clock in and out. You choose live updates or one log after they clock out.",
+    "• Track: diapers, feeding, sleep, medicine, play, growth, and age-matched milestones. You can hide tracking on your own Home; Villager helpers still see it so they can log care.",
+    "• Village: invite trusted people (Villagers) with a household code. They clock in and out. You choose live updates or one log after they clock out.",
     "• Updates: live safety and recall notes from official sources (CPSC, FDA, USDA, NHTSA, CDC, and related notices).",
-    "• Reminders and calendar: care reminders, appointments, and optional Accountability Fee if a requested Limb care step is missed.",
+    "• Reminders and calendar: care reminders, appointments, and optional Accountability Fee if a requested Villager care step is missed.",
     "• Me: small spaces for the parts of you that are not only “mom” or “dad.”",
     "• Encouragement: an optional daily CSB verse at a time you pick.",
     "",
@@ -41,10 +41,10 @@ function limbEmailText(name) {
   return [
     "Hi " + name + ",",
     "",
-    "Your Limb account is confirmed. Welcome to In the Middle of the [Mess]age — the household invited you to help with care.",
+    "Your Villager account is confirmed. Welcome to In the Middle of the [Mess]age — the household invited you to help with care.",
     "",
     "What this app is",
-    "It is a quiet care space for parents and the people they trust. You are a Limb: a helper in their village, not a public social profile.",
+    "It is a quiet care space for parents and the people they trust. You are a Villager: a helper in their village, not a public social profile.",
     "",
     "What you can do",
     "• Clock in when your shift starts. Tracking unlocks after you clock in.",
@@ -96,11 +96,11 @@ function welcomeCopy(user) {
   const name = firstNameOf(user);
   const limb = user && user.role === "limb";
   const subject = limb
-    ? "Your Limb account is ready — welcome to the village"
+    ? "Your Villager account is ready — welcome to the village"
     : "Your account is ready — welcome to In the Middle of the [Mess]age";
   const text = limb ? limbEmailText(name) : parentEmailText(name);
   const smsText = limb
-    ? ("Hi " + name + ", your Limb account is confirmed. Welcome to the village. Clock in when you start a shift. " + APP_URL)
+    ? ("Hi " + name + ", your Villager account is confirmed. Welcome to the village. Clock in when you start a shift. " + APP_URL)
     : ("Hi " + name + ", your In the Middle of the [Mess]age account is confirmed. Welcome to the community. Track care, invite your village, and stay current on safety. " + APP_URL);
   return {
     subject,

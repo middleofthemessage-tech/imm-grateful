@@ -2546,7 +2546,7 @@ a:focus:not(:focus-visible) { outline: none; }
           <button class="auth-card auth-card-limb" type="button" id="btn-join-limb" data-role="limb">
             <div class="auth-card-icon limb">M</div>
             <div class="auth-card-text">
-              <strong>Limb Mode</strong>
+              <strong>Villager Mode</strong>
               <span>Invite only · email + phone required</span>
             </div>
             <span class="auth-card-arrow">›</span>
@@ -2563,7 +2563,7 @@ a:focus:not(:focus-visible) { outline: none; }
             <div class="auth-card-icon">◎</div>
             <div class="auth-card-text">
               <strong>Sign in</strong>
-              <span>Parents, Limbs, and the owner dashboard</span>
+              <span>Parents, Villagers, and the owner dashboard</span>
             </div>
             <span class="auth-card-arrow">›</span>
           </button>
@@ -2651,8 +2651,8 @@ a:focus:not(:focus-visible) { outline: none; }
             <span>Show tracking on my Home</span>
             <div class="toggle on" id="su-tracking"></div>
           </div>
-          <p class="field-note">Optional for you. Limb helpers always see tracking so they can log care. You can turn this back on anytime in Settings.</p>
-          <label class="field-label">When a Limb is watching the child, I want</label>
+          <p class="field-note">Optional for you. Villager helpers always see tracking so they can log care. You can turn this back on anytime in Settings.</p>
+          <label class="field-label">When a Villager is watching the child, I want</label>
           <div class="chip-row wrap" id="su-update-chips">
             <button type="button" class="date-chip" data-upd="realtime">Real-time updates</button>
             <button type="button" class="date-chip active" data-upd="endshift">Log after they clock out</button>
@@ -2785,7 +2785,7 @@ a:focus:not(:focus-visible) { outline: none; }
           <div class="home-chips">
             <button class="chip chip-limb inactive" id="chip-village">
               <span class="chip-dot off"></span>
-              <span id="chip-village-label">Village · 0 limbs</span>
+              <span id="chip-village-label">Village · 0 villagers</span>
               <span>›</span>
             </button>
             <button class="chip chip-tasks" id="chip-tasks">
@@ -2816,7 +2816,7 @@ a:focus:not(:focus-visible) { outline: none; }
             </div>
             <h2 class="page-title">Quick Log Today</h2>
             <p class="page-sub">One tap to start tracking your little one</p>
-            <div class="limb-hint" id="limb-hint">Add Limb members in Village to share feeding and sleep logs</div>
+            <div class="limb-hint" id="limb-hint">Add Villager members in Village to share feeding and sleep logs</div>
 
             <div class="voice-box" id="voice-box">
               <button class="voice-btn" id="voice-btn">
@@ -2888,7 +2888,7 @@ a:focus:not(:focus-visible) { outline: none; }
               <button type="button" class="btn-primary full" id="btn-track-care-report">Open care log report</button>
             </section>
 
-            <!-- Limb: send care report from Track -->
+            <!-- Villager: send care report from Track -->
             <section class="card track-care-actions limb-only" id="track-care-limb" hidden>
               <div class="card-head">
                 <h3>Send care report</h3>
@@ -3048,7 +3048,7 @@ a:focus:not(:focus-visible) { outline: none; }
         <div class="modal-head">
           <div>
             <h2>Your Village</h2>
-            <p class="muted" id="village-sub">Your Limb helpers — empty until you invite them</p>
+            <p class="muted" id="village-sub">Your Villager helpers — empty until you invite them</p>
           </div>
           <button class="modal-close" data-close="village">Done</button>
         </div>
@@ -3056,19 +3056,19 @@ a:focus:not(:focus-visible) { outline: none; }
       </div>
     </div>
 
-    <!-- Add Limb member -->
+    <!-- Add Villager member -->
     <div class="modal-overlay" id="modal-add-limb" hidden>
       <div class="modal sheet sheet-auth">
         <div class="modal-head">
           <div>
-            <h2>Add Limb member</h2>
+            <h2>Add Villager</h2>
             <p class="muted">Create a helper · share your invite code</p>
           </div>
           <button class="modal-close" type="button" data-close="add-limb">Close</button>
         </div>
         <div class="modal-body">
           <div class="auth-error" id="add-limb-error" role="alert"></div>
-          <p class="field-note" style="margin-top:0">No one starts in your village. Add a Limb with their info, then share your invite code so they can create their Limb account and join.</p>
+          <p class="field-note" style="margin-top:0">No one starts in your village. Add a Villager with their info, then share your invite code so they can create their Villager account and join.</p>
           <label class="field-label" for="al-name">Their first name <span class="auth-req">*</span></label>
           <input class="field-input" id="al-name" type="text" maxlength="40" placeholder="e.g. Grandma" />
           <label class="field-label" for="al-relation">Relation <span class="auth-req">*</span></label>
@@ -3080,7 +3080,7 @@ a:focus:not(:focus-visible) { outline: none; }
           <div class="invite-code-box" id="al-code-box" style="margin-top:14px">
             <span class="muted">Your household invite code</span>
             <strong id="al-invite-code">—</strong>
-            <span class="muted">They enter this code on <em>Limb Mode</em> to join</span>
+            <span class="muted">They enter this code on <em>Villager Mode</em> to join</span>
           </div>
           <button type="button" class="btn-primary full" id="al-submit" style="margin-top:12px">Add to village</button>
           <button type="button" class="btn-ghost full" id="al-copy-code" style="margin-top:8px">Copy invite code</button>
@@ -3220,7 +3220,7 @@ a:focus:not(:focus-visible) { outline: none; }
       </div>
     </div>
 
-    <!-- Limb: Care summary to parent inbox -->
+    <!-- Villager: Care summary to parent inbox -->
     <div class="modal-overlay" id="modal-care-summary" hidden>
       <div class="modal sheet sheet-tall">
         <div class="modal-head">
@@ -3273,18 +3273,18 @@ a:focus:not(:focus-visible) { outline: none; }
       </div>
     </div>
 
-    <!-- Parent inbox (Limb summaries) -->
+    <!-- Parent inbox (Villager summaries) -->
     <div class="modal-overlay parent-only" id="modal-watch-alert" hidden>
       <div class="modal sheet">
         <div class="modal-head">
           <div>
             <h2>Your child is being watched</h2>
-            <p class="muted" id="watch-alert-sub">A Limb just clocked in</p>
+            <p class="muted" id="watch-alert-sub">A Villager just clocked in</p>
           </div>
           <button class="modal-close" type="button" data-close="watch-alert">✕</button>
         </div>
         <div class="modal-body">
-          <p class="field-note" id="watch-alert-body" style="margin-top:0">Choose what you want from this Limb for care updates. You can change this anytime in Settings.</p>
+          <p class="field-note" id="watch-alert-body" style="margin-top:0">Choose what you want from this Villager for care updates. You can change this anytime in Settings.</p>
           <label class="field-label">I want</label>
           <div class="chip-row wrap" id="watch-update-chips"></div>
           <p class="field-note" id="watch-update-note"></p>
@@ -3299,7 +3299,7 @@ a:focus:not(:focus-visible) { outline: none; }
         <div class="modal-head">
           <div>
             <h2>Care inbox</h2>
-            <p class="muted">Summaries from Limb · timestamps included</p>
+            <p class="muted">Summaries from Villager · timestamps included</p>
           </div>
           <button class="modal-close" type="button" data-close="inbox">Close</button>
         </div>
@@ -3307,12 +3307,12 @@ a:focus:not(:focus-visible) { outline: none; }
       </div>
     </div>
 
-    <!-- Parent: Send alert to Limb -->
+    <!-- Parent: Send alert to Villager -->
     <div class="modal-overlay" id="modal-limb-alert-send" hidden>
       <div class="modal sheet">
         <div class="modal-head">
           <div>
-            <h2>Alert Limb</h2>
+            <h2>Alert Villager</h2>
             <p class="muted">In-app popup + text to their phone</p>
           </div>
           <button class="modal-close" type="button" data-close="limb-alert-send">Cancel</button>
@@ -3340,7 +3340,7 @@ a:focus:not(:focus-visible) { outline: none; }
               <div class="toggle on" id="alert-ch-app"></div>
             </div>
             <div class="settings-row" style="border:none;padding:6px 0">
-              <span>Text message to Limb</span>
+              <span>Text message to Villager</span>
               <div class="toggle on" id="alert-ch-sms"></div>
             </div>
           </div>
@@ -3359,7 +3359,7 @@ a:focus:not(:focus-visible) { outline: none; }
       </div>
     </div>
 
-    <!-- Limb receives parent alert -->
+    <!-- Villager receives parent alert -->
     <div class="modal-overlay" id="modal-limb-alert-recv" hidden>
       <div class="modal sheet limb-recv-sheet">
         <div class="modal-head">
@@ -3378,22 +3378,22 @@ a:focus:not(:focus-visible) { outline: none; }
       </div>
     </div>
 
-    <!-- Limb invite-only gate -->
+    <!-- Villager invite-only gate -->
     <div class="modal-overlay" id="modal-limb-invite" hidden>
       <div class="modal sheet">
         <div class="modal-head">
           <div>
-            <h2>Join as a Limb</h2>
+            <h2>Join as a Villager</h2>
             <p class="muted">Invite only — a parent must add you</p>
           </div>
           <button class="modal-close" type="button" data-close="limb-invite">✕</button>
         </div>
         <div class="modal-body">
-          <p class="field-note" style="margin-top:0">Limb accounts are created when a parent invites a babysitter or family helper to their village. You can’t set up a child’s profile here. Email and phone are required to create your Limb account.</p>
+          <p class="field-note" style="margin-top:0">Villager accounts are created when a parent invites a babysitter or family helper to their village. You can’t set up a child’s profile here. Email and phone are required to create your Villager account.</p>
           <div class="auth-error" id="limb-error" role="alert"></div>
           <label class="field-label" for="limb-invite-code">Invite code from the parent <span class="auth-req">*</span></label>
           <input class="field-input" id="limb-invite-code" type="text" placeholder="e.g. MM-ABC123" maxlength="24" autocomplete="off" />
-          <p class="field-note">Ask the parent for their invite code from <strong>Village → Add Limb</strong>.</p>
+          <p class="field-note">Ask the parent for their invite code from <strong>Village → Add Villager</strong>.</p>
           <label class="field-label" for="limb-name">Your first name <span class="auth-req">*</span></label>
           <input class="field-input" id="limb-name" type="text" autocomplete="given-name" maxlength="40" />
           <label class="field-label" for="limb-email">Email <span class="auth-req">*</span></label>
@@ -3482,7 +3482,7 @@ a:focus:not(:focus-visible) { outline: none; }
         <div class="modal-head">
           <div>
             <h2>Home zone</h2>
-            <p class="muted">Parent only · Limb enter / leave alerts</p>
+            <p class="muted">Parent only · Villager enter / leave alerts</p>
           </div>
           <button class="modal-close" type="button" data-close="geo">Close</button>
         </div>
@@ -3491,7 +3491,7 @@ a:focus:not(:focus-visible) { outline: none; }
             <span>Enable home-zone alerts</span>
             <div class="toggle" id="geo-enabled-toggle"></div>
           </div>
-          <p class="field-note" style="margin-top:0">When on, <strong>you</strong> (parent) are notified if a <strong>Limb</strong> enters or leaves your home zone. Limbs do not get this setting. Location is opt-in and never required.</p>
+          <p class="field-note" style="margin-top:0">When on, <strong>you</strong> (parent) are notified if a <strong>Villager</strong> enters or leaves your home zone. Villagers do not get this setting. Location is opt-in and never required.</p>
 
           <div id="geo-config">
             <label class="field-label">Zone radius</label>
@@ -3506,11 +3506,11 @@ a:focus:not(:focus-visible) { outline: none; }
               <button type="button" class="date-chip" id="geo-use-demo">Demo pin</button>
             </div>
 
-            <label class="field-label" style="margin-top:14px">Alert me when these Limbs enter / leave</label>
+            <label class="field-label" style="margin-top:14px">Alert me when these Villagers enter / leave</label>
             <div id="geo-watch-list" class="limb-checks"></div>
 
             <label class="field-label" style="margin-top:14px">Demo (functional without driving around)</label>
-            <p class="field-note" style="margin-top:0">Simulate a Limb crossing the zone boundary so you can test parent alerts before launch.</p>
+            <p class="field-note" style="margin-top:0">Simulate a Villager crossing the zone boundary so you can test parent alerts before launch.</p>
             <div class="chip-row wrap">
               <button type="button" class="btn-primary" id="geo-sim-enter" style="flex:1">Simulate ENTER home</button>
               <button type="button" class="btn-primary" id="geo-sim-leave" style="flex:1;background:var(--maroon,#8B3A3A)">Simulate LEAVE home</button>
@@ -3638,7 +3638,7 @@ a:focus:not(:focus-visible) { outline: none; }
 
           <label class="field-label">Share with Village</label>
           <div class="toggle-row">
-            <span>Notify Limb members</span>
+            <span>Notify Villager members</span>
             <div class="toggle" id="appt-share-toggle"></div>
           </div>
           <div id="appt-limb-checks" class="limb-checks" hidden></div>
@@ -3691,14 +3691,14 @@ a:focus:not(:focus-visible) { outline: none; }
           <label class="field-label">Who should this remind?</label>
           <div class="chip-row wrap" id="rem-for-chips">
             <button type="button" class="date-chip active" data-for="parent">Parent only</button>
-            <button type="button" class="date-chip" data-for="limb">Limb only</button>
-            <button type="button" class="date-chip" data-for="both">Parent &amp; Limb</button>
+            <button type="button" class="date-chip" data-for="limb">Villager only</button>
+            <button type="button" class="date-chip" data-for="both">Parent &amp; Villager</button>
           </div>
-          <p class="field-note">Limb-only and shared reminders help babysitters and family stay on the same care plan.</p>
+          <p class="field-note">Villager-only and shared reminders help babysitters and family stay on the same care plan.</p>
 
           <div class="acct-note" id="rem-acct-note" hidden>
             <strong>Accountability Fee</strong>
-            <p style="margin-top:6px">If this care step isn’t logged in time — or before the Limb clocks out — the app may apply a $1.99 accountability check. The helper can request a waiver until Sunday. They will see it as an app care-check, not as a charge from you.</p>
+            <p style="margin-top:6px">If this care step isn’t logged in time — or before the Villager clocks out — the app may apply a $1.99 accountability check. The helper can request a waiver until Sunday. They will see it as an app care-check, not as a charge from you.</p>
             <div class="settings-row" style="border:none;padding:8px 0 0">
               <span>Apply Accountability Fee to this reminder</span>
               <div class="toggle on" id="rem-acct-toggle"></div>
@@ -4878,7 +4878,7 @@ a:focus:not(:focus-visible) { outline: none; }
           parentProf.village.push({
             id: "l_" + Date.now().toString(36),
             name: firstName,
-            relation: "Limb",
+            relation: "Villager",
             email,
             phone,
             active: true,
@@ -4920,7 +4920,7 @@ a:focus:not(:focus-visible) { outline: none; }
       rememberContact(email || phone);
       await pushVault();
       sendWelcomeNotify({ email, phone, name: firstName, role: "limb", alreadySent: !!(cloud && cloud.welcomed) });
-      toast("You’re in as Limb · " + firstName);
+      toast("You’re in as Villager · " + firstName);
     } catch (err) {
       console.error(err);
       showAuthError("limb-error", "Could not join. Try again.");
@@ -5790,7 +5790,7 @@ a:focus:not(:focus-visible) { outline: none; }
         if (data.user && data.user.developer) account.developer = true;
         if (data.user && (data.user.parentRole === "dad" || data.user.parentRole === "mom")) account.parentRole = data.user.parentRole;
       }
-      trackCloud("signup", account.role === "limb" ? "Limb joined" : "Parent signed up");
+      trackCloud("signup", account.role === "limb" ? "Villager joined" : "Parent signed up");
       return data;
     } catch (e) { return { ok: false }; }
   }
@@ -5982,7 +5982,7 @@ a:focus:not(:focus-visible) { outline: none; }
         chips.innerHTML = [
           ["People", c.users || 0],
           ["Parents", c.parents || 0],
-          ["Limbs", c.limbs || 0],
+          ["Villagers", c.limbs || 0],
           ["Signups today", c.signupsToday || 0],
           ["Clock-ins", c.clockins || 0],
           ["Events today", c.eventsToday || 0],
@@ -6005,7 +6005,7 @@ a:focus:not(:focus-visible) { outline: none; }
       if (people) {
         people.innerHTML = (data.users || []).map((u) =>
           `<button type="button" class="inbox-item" data-uid="${escapeHtml(u.id)}">
-            <div class="inbox-title">${escapeHtml(u.firstName || "User")} · ${escapeHtml(u.role || "")}${u.developer ? " · you" : ""}</div>
+            <div class="inbox-title">${escapeHtml(u.firstName || "User")} · ${escapeHtml(u.role === "limb" ? "Villager" : (u.role || ""))}${u.developer ? " · you" : ""}</div>
             <div class="inbox-preview">${escapeHtml(u.email || "")} · ••••${escapeHtml(u.phoneLast4 || "")} · last ${escapeHtml((u.lastSeen || "").replace("T", " ").slice(0, 16) || "—")}</div>
           </button>`
         ).join("") || '<p class="field-note">No cloud accounts yet.</p>';
@@ -6197,9 +6197,9 @@ a:focus:not(:focus-visible) { outline: none; }
   }
   function limbUpdateModeToast(mode) {
     const m = normalizeLimbUpdateMode(mode);
-    if (m === "realtime") return "You'll get each Limb log as it happens";
+    if (m === "realtime") return "You'll get each Villager log as it happens";
     if (m === "both") return "You'll get live logs and a clock-out summary";
-    if (m === "none") return "No Limb care logs until you change this";
+    if (m === "none") return "No Villager care logs until you change this";
     return "You'll get the log when they clock out";
   }
   function limbUpdateChipsHtml(active) {
@@ -6336,7 +6336,7 @@ a:focus:not(:focus-visible) { outline: none; }
     if (wantsLiveLimbUpdates(h.limbUpdateMode)) {
       pushToParentInbox({
         id: "live-" + Date.now(),
-        from: h.activeShift.limbName || "Limb",
+        from: h.activeShift.limbName || "Villager",
         childNames: [displayChildName({ formal: true })],
         start: ev.at,
         end: ev.at,
@@ -6353,13 +6353,13 @@ a:focus:not(:focus-visible) { outline: none; }
     if (!isLimbRole()) return;
     const h = loadHousehold();
     if (h.activeShift && !h.activeShift.endedAt && currentAccount && h.activeShift.limbId !== currentAccount.id) {
-      toast("Another Limb is already on shift");
+      toast("Another Villager is already on shift");
       return;
     }
     h.activeShift = {
       id: "sh_" + Date.now().toString(36),
       limbId: currentAccount && currentAccount.id,
-      limbName: (profile.userName || (currentAccount && currentAccount.firstName) || "Limb"),
+      limbName: (profile.userName || (currentAccount && currentAccount.firstName) || "Villager"),
       startedAt: new Date().toISOString(),
       endedAt: null,
       events: [],
@@ -6372,7 +6372,7 @@ a:focus:not(:focus-visible) { outline: none; }
       start: h.activeShift.startedAt,
       end: h.activeShift.startedAt,
       sentAt: h.activeShift.startedAt,
-      note: h.activeShift.limbName + " clocked in. Your child is being watched. You can change Limb updates for this shift.",
+      note: h.activeShift.limbName + " clocked in. Your child is being watched. You can change Villager updates for this shift.",
       tracks: [],
       events: [],
       read: false,
@@ -6400,7 +6400,7 @@ a:focus:not(:focus-visible) { outline: none; }
     if (wantsEndShiftLog(mode)) {
       pushToParentInbox({
         id: "shift-end-" + h.activeShift.id,
-        from: h.activeShift.limbName || "Limb",
+        from: h.activeShift.limbName || "Villager",
         childNames: [displayChildName({ formal: true })],
         start: h.activeShift.startedAt,
         end: h.activeShift.endedAt,
@@ -6414,12 +6414,12 @@ a:focus:not(:focus-visible) { outline: none; }
     } else if (mode === "realtime") {
       pushToParentInbox({
         id: "shift-end-" + h.activeShift.id,
-        from: h.activeShift.limbName || "Limb",
+        from: h.activeShift.limbName || "Villager",
         childNames: [displayChildName({ formal: true })],
         start: h.activeShift.startedAt,
         end: h.activeShift.endedAt,
         sentAt: h.activeShift.endedAt,
-        note: (h.activeShift.limbName || "Limb") + " clocked out.",
+        note: (h.activeShift.limbName || "Villager") + " clocked out.",
         tracks: [],
         events: [],
         read: false,
@@ -6534,7 +6534,7 @@ a:focus:not(:focus-visible) { outline: none; }
       id: "fee_" + Date.now().toString(36),
       taskId: task.id,
       limbId: shift.limbId || (currentAccount && currentAccount.id) || "",
-      limbName: shift.limbName || (profile.userName || "Limb"),
+      limbName: shift.limbName || (profile.userName || "Villager"),
       label: task.label,
       why: why || "A requested care step was not logged in time.",
       amount: ACCT_FEE,
@@ -6642,7 +6642,7 @@ a:focus:not(:focus-visible) { outline: none; }
     if (isLimbRole() && fees.length) {
       $("#acct-modal-sub").textContent = "A requested care step was not logged in time. This is the app’s care-check — it helps match the care plan on file.";
     } else if (!isLimbRole()) {
-      $("#acct-modal-sub").textContent = "Quiet review of missed care steps. Waiving never names you to the Limb.";
+      $("#acct-modal-sub").textContent = "Quiet review of missed care steps. Waiving never names you to the Villager.";
     }
   }
   function maybeShowLimbFees() {
@@ -6746,7 +6746,7 @@ a:focus:not(:focus-visible) { outline: none; }
     const chip = $("#chip-village");
     const label = $("#chip-village-label");
     if (label) {
-      label.textContent = total === 0 ? "Village · 0 limbs" : (n === 1 ? "Village · 1 limb" : "Village · " + n + " limbs");
+      label.textContent = total === 0 ? "Village · 0 villagers" : (n === 1 ? "Village · 1 villager" : "Village · " + n + " villagers");
     }
     if (chip) {
       chip.classList.toggle("inactive", total === 0);
@@ -6756,19 +6756,19 @@ a:focus:not(:focus-visible) { outline: none; }
     const hint = $("#limb-hint");
     if (hint) {
       if (total === 0) {
-        hint.textContent = "Add Limb members in Village to share feeding and sleep logs";
+        hint.textContent = "Add Villagers in Village to share feeding and sleep logs";
       } else {
         const names = getVillage().filter((m) => m.active !== false).map((m) => m.name).filter(Boolean);
         hint.textContent = names.length
           ? names.join(" & ") + " can be notified on feeding and sleep logs"
-          : "Limb members are in your village — turn them Active to notify";
+          : "Villagers are in your village — turn them Active to notify";
       }
     }
     const sub = $("#village-sub");
     if (sub) {
       sub.textContent = total === 0
-        ? "Your Limb helpers — empty until you invite them"
-        : total + " Limb member" + (total === 1 ? "" : "s") + " in your household";
+        ? "Your Villagers — empty until you invite them"
+        : total + " Villager" + (total === 1 ? "" : "s") + " in your household";
     }
   }
   // Compat: code that used LIMB array now reads live village
@@ -7232,18 +7232,18 @@ a:focus:not(:focus-visible) { outline: none; }
     const code = ensureInviteCode();
     let html = `
       <div class="invite-code-box">
-        <span class="muted">Share this code so a Limb can join</span>
+        <span class="muted">Share this code so a Villager can join</span>
         <strong id="village-invite-code">${escapeHtml(code)}</strong>
         <button type="button" class="btn-ghost full" id="village-copy-code" style="margin-top:8px">Copy invite code</button>
       </div>`;
     if (!members.length) {
-      html += `<div class="village-empty">No Limb members yet.<br>Add a babysitter, partner, or family helper to start your village.</div>`;
+      html += `<div class="village-empty">No Villagers yet.<br>Add a babysitter, partner, or family helper to start your village.</div>`;
     } else {
       html += members.map((m) => `
       <div class="member-card" data-limb-id="${escapeHtml(m.id)}">
         <div class="member-av" style="background:${escapeHtml(m.color || "#EDE8FA")}">${escapeHtml(m.initial || (m.name || "?").charAt(0).toUpperCase())}</div>
         <div>
-          <div class="member-name">${escapeHtml(m.name || "Limb")}</div>
+          <div class="member-name">${escapeHtml(m.name || "Villager")}</div>
           <div class="member-rel">${escapeHtml(m.relation || "Helper")}${m.email ? " · " + escapeHtml(m.email) : ""}${m.phone ? " · " + escapeHtml(formatPhoneDisplay(m.phone)) : ""}</div>
         </div>
         <div class="member-actions">
@@ -7256,8 +7256,8 @@ a:focus:not(:focus-visible) { outline: none; }
       </div>`).join("");
     }
     html += `
-      <button class="btn-primary full" style="margin-top:12px" id="add-limb">+ Add Limb member</button>
-      <button class="btn-primary full" style="margin-top:8px;background:var(--maroon)" id="village-alert-limb" ${members.filter(m=>m.active!==false).length ? "" : "disabled style=\"margin-top:8px;background:var(--maroon);opacity:0.5\""}>⚡ Send alert to Limb</button>`;
+      <button class="btn-primary full" style="margin-top:12px" id="add-limb">+ Add Villager</button>
+      <button class="btn-primary full" style="margin-top:8px;background:var(--maroon)" id="village-alert-limb" ${members.filter(m=>m.active!==false).length ? "" : "disabled style=\"margin-top:8px;background:var(--maroon);opacity:0.5\""}>⚡ Send alert to Villager</button>`;
     body.innerHTML = html;
     updateVillageUI();
     $("#village-copy-code")?.addEventListener("click", () => {
@@ -7273,11 +7273,11 @@ a:focus:not(:focus-visible) { outline: none; }
         const id = btn.getAttribute("data-del-limb");
         const m = getVillage().find((x) => x.id === id);
         if (!m) return;
-        if (!confirm("Remove " + (m.name || "this Limb") + " from your village?")) return;
+        if (!confirm("Remove " + (m.name || "this Villager") + " from your village?")) return;
         saveVillage(getVillage().filter((x) => x.id !== id));
         syncLimbAlias();
         renderVillage();
-        toast((m.name || "Limb") + " removed");
+        toast((m.name || "Villager") + " removed");
       });
     });
     $$(".member-status").forEach((el, i) => {
@@ -7302,7 +7302,7 @@ a:focus:not(:focus-visible) { outline: none; }
     $("#add-limb")?.addEventListener("click", () => openAddLimbModal());
     $("#village-alert-limb")?.addEventListener("click", () => {
       if (!getVillage().filter((m) => m.active !== false).length) {
-        toast("Add an active Limb first");
+        toast("Add an active Villager first");
         return;
       }
       closeModal("village");
@@ -7334,7 +7334,7 @@ a:focus:not(:focus-visible) { outline: none; }
     if (phoneRaw && !isValidPhone(phoneRaw)) return showAuthError("add-limb-error", "Enter a valid phone or leave it blank.");
     const list = getVillage();
     if (list.some((m) => (m.name || "").toLowerCase() === name.toLowerCase() && (m.relation || "").toLowerCase() === relation.toLowerCase())) {
-      return showAuthError("add-limb-error", "That Limb is already in your village.");
+      return showAuthError("add-limb-error", "That Villager is already in your village.");
     }
     const color = LIMB_COLORS[list.length % LIMB_COLORS.length];
     const member = {
@@ -7375,7 +7375,7 @@ a:focus:not(:focus-visible) { outline: none; }
     body.innerHTML =
       (TASK_LOG.length
         ? `<p class="muted" style="margin-bottom:12px">Shared care log with your village</p>`
-        : `<div class="village-empty">No shared tasks yet.<br>Tasks appear as you and your Limb members log care.</div>`) +
+        : `<div class="village-empty">No shared tasks yet.<br>Tasks appear as you and your Villagers log care.</div>`) +
       TASK_LOG.map(
         (t) => `
       <div class="task-row">
@@ -7487,22 +7487,22 @@ a:focus:not(:focus-visible) { outline: none; }
       <div class="settings-sec">Color theme</div>
       <div class="theme-grid" id="theme-grid"></div>
       <div class="settings-sec">Location</div>
-      <p class="field-note" style="margin-top:0">Parent-only: get alerts when a <strong>Limb</strong> enters or leaves your home zone (200 ft – 5 mi). Limbs cannot turn this on or manage it. Open <strong>📍 Zone</strong> in the header. Off by default.</p>
+      <p class="field-note" style="margin-top:0">Parent-only: get alerts when a <strong>Villager</strong> enters or leaves your home zone (200 ft – 5 mi). Villagers cannot turn this on or manage it. Open <strong>📍 Zone</strong> in the header. Off by default.</p>
       <div class="settings-sec">Features</div>
-      ${isLimbRole() ? `<p class="field-note" style="margin-top:0">Tracking stays on for Limb accounts. Clock in on the Track tab to log care.</p>` : `
+      ${isLimbRole() ? `<p class="field-note" style="margin-top:0">Tracking stays on for Villager accounts. Clock in on the Track tab to log care.</p>` : `
       <div class="settings-row">
         <span>Show tracking on my Home</span>
         <div class="toggle${profile.trackingEnabled !== false ? " on" : ""}" id="tog-parent-track"></div>
       </div>
-      <p class="field-note" style="margin-top:-4px;margin-bottom:8px">Hide this if you only want Limbs to log. You can turn it back on anytime. Limbs always see tracking.</p>
-      <label class="field-label">Limb care updates</label>
+      <p class="field-note" style="margin-top:-4px;margin-bottom:8px">Hide this if you only want Villagers to log. You can turn it back on anytime. Villagers always see tracking.</p>
+      <label class="field-label">Villager care updates</label>
       <div class="chip-row wrap" id="set-update-chips">${limbUpdateChipsHtml(profile.limbUpdateMode)}</div>
-      <p class="field-note">Real-time: each log as it happens. After clock-out: one summary. Both: those together. None: no care logs. You can also change this when a Limb clocks in.</p>
+      <p class="field-note">Real-time: each log as it happens. After clock-out: one summary. Both: those together. None: no care logs. You can also change this when a Villager clocks in.</p>
       <div class="settings-row">
         <span>Accountability Fee</span>
         <div class="toggle${loadHousehold().accountabilityFee ? " on" : ""}" id="tog-acct-fee"></div>
       </div>
-      <p class="field-note" style="margin-top:-4px">If a Limb misses a reminder or care request in time — or clocks out with it unfinished — the app may apply a $1.99 care-check. They can request a waiver until Sunday. They will not be told the fee comes from you.</p>
+      <p class="field-note" style="margin-top:-4px">If a Villager misses a reminder or care request in time — or clocks out with it unfinished — the app may apply a $1.99 care-check. They can request a waiver until Sunday. They will not be told the fee comes from you.</p>
       <button type="button" class="btn-ghost full" id="btn-acct-parent" style="margin-top:6px">Review accountability items</button>
       `}
       <div class="settings-row">
@@ -7618,7 +7618,7 @@ a:focus:not(:focus-visible) { outline: none; }
       saveProfile();
       syncHouseholdFromParent();
       applyTrackingVisibility();
-      toast(profile.trackingEnabled ? "Tracking shown on your Home" : "Tracking hidden for you · Limbs still have it");
+      toast(profile.trackingEnabled ? "Tracking shown on your Home" : "Tracking hidden for you · Villagers still have it");
     });
     $$("#set-update-chips .date-chip").forEach((c) => {
       c.addEventListener("click", () => {
@@ -8083,16 +8083,16 @@ a:focus:not(:focus-visible) { outline: none; }
     }));
     const completedTasks = tracks.includes("completed")
       ? [
-          { label: "Gave Vitamin D", at: hoursAgo(1.2), by: "Limb" },
-          { label: "Finished diaper check reminder", at: hoursAgo(0.5), by: "Limb" },
+          { label: "Gave Vitamin D", at: hoursAgo(1.2), by: "Villager" },
+          { label: "Finished diaper check reminder", at: hoursAgo(0.5), by: "Villager" },
         ]
       : [];
 
     let bodyHtml = `<div class="care-doc">
       <div class="care-doc-header">
-        <h3>Limb care summary</h3>
+        <h3>Villager care summary</h3>
         <div class="care-doc-meta">
-          From: <strong>Limb (demo)</strong><br>
+          From: <strong>Villager (demo)</strong><br>
           Children: <strong>${kids.map((k) => escapeHtml(k.name)).join(", ")}</strong><br>
           Shift: ${formatStamp(startIso)} → ${formatStamp(endIso)}<br>
           Sent: ${formatStamp(generatedAt)}
@@ -8134,7 +8134,7 @@ a:focus:not(:focus-visible) { outline: none; }
     $("#summary-send-final")?.addEventListener("click", () => {
       const item = {
         id: String(Date.now()),
-        from: "Limb",
+        from: "Villager",
         childNames: kids.map((k) => k.name),
         start: startIso,
         end: endIso,
@@ -8169,7 +8169,7 @@ a:focus:not(:focus-visible) { outline: none; }
     const body = $("#inbox-body");
     if (!body) return;
     if (!parentInbox.length) {
-      body.innerHTML = `<div class="cal-empty">No care notes yet.<br>When a Limb clocks in, you’ll get a “being watched” alert here and can choose live updates, a clock-out log, both, or none.</div>`;
+      body.innerHTML = `<div class="cal-empty">No care notes yet.<br>When a Villager clocks in, you’ll get a “being watched” alert here and can choose live updates, a clock-out log, both, or none.</div>`;
       openModal("inbox");
       return;
     }
@@ -8202,7 +8202,7 @@ a:focus:not(:focus-visible) { outline: none; }
     updateInboxBadge();
     let html = `<div class="care-doc">
       <div class="care-doc-header">
-        <h3>Limb care summary</h3>
+        <h3>Villager care summary</h3>
         <div class="care-doc-meta">
           From: <strong>${escapeHtml(item.from)}</strong><br>
           Children: <strong>${escapeHtml((item.childNames || []).join(", "))}</strong><br>
@@ -8222,7 +8222,7 @@ a:focus:not(:focus-visible) { outline: none; }
     }
     html += `<div class="care-doc-stamp">Accountability snapshot · In the Middle of the [Mess]age</div>`;
     if (isParentAccount()) {
-      html += `<div class="settings-sec" style="margin-top:16px">Limb care updates</div>
+      html += `<div class="settings-sec" style="margin-top:16px">Villager care updates</div>
         <p class="field-note" style="margin-top:0">Now: ${escapeHtml(limbUpdateModeLabel(currentLimbUpdateMode()))}. Change anytime.</p>
         <div class="chip-row wrap" id="inbox-update-chips">${limbUpdateChipsHtml()}</div>`;
     }
@@ -8246,13 +8246,13 @@ a:focus:not(:focus-visible) { outline: none; }
     const s = shift || (loadHousehold().activeShift);
     if (!s) return;
     if (currentAccount && s.limbId && s.limbId === currentAccount.id) return;
-    const who = s.limbName || s.from || "A Limb";
+    const who = s.limbName || s.from || "A Villager";
     const kids = (s.childNames && s.childNames.length) ? s.childNames.join(", ") : (typeof displayChildName === "function" ? displayChildName({ formal: true }) : "your child");
     const when = s.startedAt || s.start || s.sentAt || "";
     const sub = $("#watch-alert-sub");
     if (sub) sub.textContent = who + " clocked in" + (when && typeof formatStamp === "function" ? " · " + formatStamp(when) : "");
     const body = $("#watch-alert-body");
-    if (body) body.textContent = who + " is watching " + kids + ". Choose what you want from this Limb. You can change this anytime in Settings.";
+    if (body) body.textContent = who + " is watching " + kids + ". Choose what you want from this Villager. You can change this anytime in Settings.";
     const chips = $("#watch-update-chips");
     if (chips) chips.innerHTML = limbUpdateChipsHtml();
     const note = $("#watch-update-note");
@@ -8309,7 +8309,7 @@ a:focus:not(:focus-visible) { outline: none; }
       lat: null,
       lng: null,
       label: "",
-      watch: [], // Limb names only — empty until parent picks
+      watch: [], // Villager names only — empty until parent picks
       events: [],
       lastState: {}, // name -> "inside" | "outside"
     };
@@ -8338,10 +8338,10 @@ a:focus:not(:focus-visible) { outline: none; }
   }
 
   function geoWatchCandidates() {
-    // Limbs only — geofencing is a parent feature; alerts are about Limb enter/leave
+    // Villagers only — geofencing is a parent feature; alerts are about Villager enter/leave
     const list = [];
     syncLimbAlias().forEach((m) => {
-      if (m.relation === "Partner") return; // co-parent is not a Limb for this feature
+      if (m.relation === "Partner") return; // co-parent is not a Villager for this feature
       list.push({ name: m.name, relation: m.relation, kind: "limb" });
     });
     return list;
@@ -8370,7 +8370,7 @@ a:focus:not(:focus-visible) { outline: none; }
         start: ev.at,
         end: ev.at,
         sentAt: ev.at,
-        note: `Limb ${who} ${verb} the home zone (${formatRadius(geo.radiusFt)}). ${detail || ""}`.trim(),
+        note: `Villager ${who} ${verb} the home zone (${formatRadius(geo.radiusFt)}). ${detail || ""}`.trim(),
         tracks: [],
         events: [],
         read: false,
@@ -8392,7 +8392,7 @@ a:focus:not(:focus-visible) { outline: none; }
       .slice(0, 12)
       .map((e) => {
         const when = formatStamp(e.at);
-        return `<div class="geo-event ${e.kind}"><strong>Limb · ${escapeHtml(e.who)} · ${e.kind === "enter" ? "entered" : "left"} home zone</strong><span>${when}${e.detail ? " · " + escapeHtml(e.detail) : ""}</span></div>`;
+        return `<div class="geo-event ${e.kind}"><strong>Villager · ${escapeHtml(e.who)} · ${e.kind === "enter" ? "entered" : "left"} home zone</strong><span>${when}${e.detail ? " · " + escapeHtml(e.detail) : ""}</span></div>`;
       })
       .join("");
   }
@@ -8434,7 +8434,7 @@ a:focus:not(:focus-visible) { outline: none; }
   }
 
   function openGeoPanel() {
-    // Parent accounts only — Limbs never configure or see this feature
+    // Parent accounts only — Villagers never configure or see this feature
     if ((document.body.dataset.role || "parent") === "limb") {
       toast("Geofencing is only on parent accounts");
       return;
@@ -8489,7 +8489,7 @@ a:focus:not(:focus-visible) { outline: none; }
     }
     const watch = geo.watch || [];
     if (!watch.length) {
-      toast("Select at least one Limb to watch");
+      toast("Select at least one Villager to watch");
       return;
     }
     if (geo.lat == null) {
@@ -8499,7 +8499,7 @@ a:focus:not(:focus-visible) { outline: none; }
     const who = watch[Math.floor(Math.random() * watch.length)];
     geo.lastState[who] = kind === "enter" ? "inside" : "outside";
     saveGeo();
-    pushGeoEvent(kind, who, `Limb · demo · ${formatRadius(geo.radiusFt)}`);
+    pushGeoEvent(kind, who, `Villager · demo · ${formatRadius(geo.radiusFt)}`);
   }
 
   function checkPhoneVsZone() {
@@ -8543,7 +8543,7 @@ a:focus:not(:focus-visible) { outline: none; }
       saveGeo();
       const cfg = $("#geo-config");
       if (cfg) cfg.style.opacity = geo.enabled ? "1" : "0.55";
-      toast(geo.enabled ? "Limb home-zone alerts on" : "Limb home-zone alerts off");
+      toast(geo.enabled ? "Villager home-zone alerts on" : "Villager home-zone alerts off");
     });
     $("#geo-radius")?.addEventListener("input", (e) => {
       geo.radiusFt = Number(e.target.value) || 500;
@@ -8606,7 +8606,7 @@ a:focus:not(:focus-visible) { outline: none; }
       const show = isLimbRole() ? limbOpenFees().length > 0 : (!isLimbRole() && householdAccountabilityOn());
       acctBtn.hidden = !show;
     }
-    // Limb: Track + Updates + Calendar only
+    // Villager: Track + Updates + Calendar only
     if (role === "limb") {
       showTab("track");
       let ban = $("#limb-mode-banner");
@@ -8614,7 +8614,7 @@ a:focus:not(:focus-visible) { outline: none; }
         ban = document.createElement("div");
         ban.id = "limb-mode-banner";
         ban.className = "limb-mode-banner";
-        ban.textContent = "Limb mode · Clock in to track · Calendar · Updates · Send care summary";
+        ban.textContent = "Villager mode · Clock in to track · Calendar · Updates · Send care summary";
         const header = document.querySelector(".app-header");
         if (header && header.parentNode) header.parentNode.insertBefore(ban, header.nextSibling);
       }
@@ -8647,7 +8647,7 @@ a:focus:not(:focus-visible) { outline: none; }
   function openLimbAlertComposer() {
     syncLimbAlias();
     if ((document.body.dataset.role || "parent") !== "parent") {
-      toast("Only parents can send Limb alerts");
+      toast("Only parents can send Villager alerts");
       return;
     }
     alertType = "task";
@@ -8659,7 +8659,7 @@ a:focus:not(:focus-visible) { outline: none; }
     if (box) {
       const __activeLimbs = syncLimbAlias().filter((m) => m.active !== false);
     if (!__activeLimbs.length) {
-      box.innerHTML = '<div class="village-empty">No active Limb members yet. Add some in Village first.</div>';
+      box.innerHTML = '<div class="village-empty">No active Villager members yet. Add some in Village first.</div>';
     } else box.innerHTML = __activeLimbs
         .map(
           (m) => `
@@ -8683,7 +8683,7 @@ a:focus:not(:focus-visible) { outline: none; }
   function sendLimbAlert() {
     const to = $$("#alert-limb-checks .limb-check-row.on").map((r) => r.dataset.name);
     if (!to.length) {
-      toast("Pick at least one Limb member");
+      toast("Pick at least one Villager");
       return;
     }
     const note = ($("#alert-note")?.value || "").trim();
@@ -8746,7 +8746,7 @@ a:focus:not(:focus-visible) { outline: none; }
   function showLimbAlertPopup(alert) {
     if (!alert) return;
     $("#recv-alert-title").textContent = "Parent needs you";
-    $("#recv-alert-from").textContent = `From ${alert.from || "Parent"} · ${alert.to ? alert.to.join(", ") : "Limb"}`;
+    $("#recv-alert-from").textContent = `From ${alert.from || "Parent"} · ${alert.to ? alert.to.join(", ") : "Villager"}`;
     $("#recv-alert-type").textContent = alert.typeLabel || ALERT_TYPE_LABELS[alert.type] || "Request";
     let body = alert.typeLabel || "Please check in";
     if (alert.note) body += " — " + alert.note;
@@ -9182,7 +9182,7 @@ a:focus:not(:focus-visible) { outline: none; }
   }
 
   function forLabel(f) {
-    return ({ parent: "Parent", limb: "Limb", both: "Parent & Limb" })[f] || "Parent";
+    return ({ parent: "Parent", limb: "Villager", both: "Parent & Villager" })[f] || "Parent";
   }
 
   function renderCareReminders() {
@@ -9195,8 +9195,8 @@ a:focus:not(:focus-visible) { outline: none; }
     }
     if (!items.length) {
       list.innerHTML = role === "limb"
-        ? `<div class="cal-empty">No care reminders assigned to Limb yet.</div>`
-        : `<div class="cal-empty">No care reminders yet.<br>Schedule medicine, feeds, diaper checks, and more.<br>Assign to Parent, Limb, or both.</div>`;
+        ? `<div class="cal-empty">No care reminders assigned to Villager yet.</div>`
+        : `<div class="cal-empty">No care reminders yet.<br>Schedule medicine, feeds, diaper checks, and more.<br>Assign to Parent, Villager, or both.</div>`;
       return;
     }
     const sorted = [...items].sort((a, b) => a.time.localeCompare(b.time));
@@ -9223,7 +9223,7 @@ a:focus:not(:focus-visible) { outline: none; }
     $$("#reminder-list .cal-event").forEach((el) => {
       el.addEventListener("click", () => {
         if ((document.body.dataset.role || "parent") === "limb") {
-          toast("Assigned by parent — view only in Limb mode");
+          toast("Assigned by parent — view only in Villager mode");
           return;
         }
         openReminderEditor(el.dataset.id);
