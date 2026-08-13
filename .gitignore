@@ -4,6 +4,9 @@
 .DS_Store
 Thumbs.db
 *.log
+node_modules/
+android/
+ios/
 
 # Secrets and local env
 .env

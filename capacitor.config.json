@@ -1,0 +1,30 @@
+{
+  "appId": "app.immgrateful.mobile",
+  "appName": "IMM Grateful",
+  "webDir": ".",
+  "server": {
+    "url": "https://imm-grateful.vercel.app",
+    "androidScheme": "https",
+    "iosScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "launchAutoHide": true,
+      "backgroundColor": "#7A9E8A",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "LIGHT"
+    }
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#7A9E8A"
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "preferredContentMode": "mobile",
+    "backgroundColor": "#7A9E8A"
+  }
+}

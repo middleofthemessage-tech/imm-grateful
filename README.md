@@ -4,6 +4,8 @@ A break for your brain — care tracking, village help, and safety for the messy
 
 **Live (send this):** https://imm-grateful.vercel.app/
 
+To put this on the **Apple App Store** and **Google Play**, follow **[APP_STORE.md](APP_STORE.md)**. The same website becomes a phone app. Tap **Speak** on any page for voice commands.
+
 Backup Pages URL: https://middleofthemessage-tech.github.io/imm-grateful/
 
 Use the Vercel link. Cloud accounts, vaults, and the developer dashboard only work there.

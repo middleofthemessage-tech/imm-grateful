@@ -1835,6 +1835,42 @@ html.theme-dark .loading-dots span {
   font-size: 12px;
   color: var(--text-pale);
 }
+.voice-fab {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 80;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--sage-dark);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 16px;
+  font-weight: 800;
+  font-size: 14px;
+  box-shadow: 0 8px 20px rgba(44, 44, 44, 0.18);
+}
+.voice-fab.listening { background: var(--maroon); }
+.voice-fab.success { background: #2D7A3A; }
+body.in-app .voice-fab { bottom: max(78px, calc(62px + env(safe-area-inset-bottom))); }
+.voice-listen-bar {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: max(86px, calc(70px + env(safe-area-inset-bottom)));
+  z-index: 81;
+  background: #2C2C2C;
+  color: #fff;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+body.in-app .voice-listen-bar { bottom: max(148px, calc(132px + env(safe-area-inset-bottom))); }
+.voice-listen-bar[hidden] { display: none !important; }
+.voice-listen-bar strong { display: block; margin-bottom: 2px; }
 .track-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2518,6 +2554,14 @@ a:focus:not(:focus-visible) { outline: none; }
 </head>
 <body class="font-soft">
   <a class="skip-link" href="#main-content">Skip to content</a>
+  <button type="button" class="voice-fab" id="voice-fab" aria-label="Voice command">
+    <span class="voice-fab-icon" id="voice-fab-icon">◎</span>
+    <span id="voice-fab-label">Speak</span>
+  </button>
+  <div class="voice-listen-bar" id="voice-listen-bar" hidden>
+    <strong id="voice-listen-title">Listening…</strong>
+    <span id="voice-listen-hint">Try “go home”, “dirty diaper”, “open village”, or “help”.</span>
+  </div>
   <aside class="desktop-brand" aria-hidden="true">
     <img src="logo-main.jpg" alt="" />
     <p>A break for your brain</p>
@@ -2823,7 +2867,7 @@ a:focus:not(:focus-visible) { outline: none; }
                 <span class="voice-icon">◎</span>
                 <span class="voice-label">Voice Log</span>
               </button>
-              <p class="voice-hint">Say: “dirty diaper” · “bottle 4 oz” · “tummy time” · “nap”</p>
+              <p class="voice-hint">Or tap Speak anywhere. Say: “dirty diaper” · “go home” · “open village” · “help”</p>
             </div>
 
             <div class="track-grid" id="track-grid">
@@ -6916,6 +6960,7 @@ a:focus:not(:focus-visible) { outline: none; }
   function showScreen(id) {
     $$(".screen").forEach((s) => s.classList.remove("active"));
     $("#" + id).classList.add("active");
+    document.body.classList.toggle("in-app", id === "screen-app");
     const mark = $("#corner-mark");
     if (mark) mark.classList.toggle("hidden", id === "screen-auth");
   }
@@ -7512,6 +7557,7 @@ a:focus:not(:focus-visible) { outline: none; }
       <p class="field-note" style="margin-top:-4px;margin-bottom:8px">When on, Track shows a CDC / AAP / WHO checklist matched to your child’s age.</p>
       <div class="settings-row"><span>Shared tasks</span><div class="toggle on" data-tog="tasks"></div></div>
       <div class="settings-row"><span>Voice logging</span><div class="toggle on" data-tog="voice"></div></div>
+      <p class="field-note" style="margin-top:-4px">The Speak button works on every page. Say “help” for commands, or log care with “dirty diaper”, “bottle 4 ounces”, “nap”.</p>
       <div class="settings-row"><span>Safety recalls</span><div class="toggle on" data-tog="recalls"></div></div>
       <div class="settings-sec">Account</div>
       <div class="settings-account-block">
@@ -8995,59 +9041,152 @@ a:focus:not(:focus-visible) { outline: none; }
   }
 
   function resetVoiceBtn(btn) {
+    if (!btn) return;
     btn.classList.remove("listening", "success");
-    const icon = btn.querySelector(".voice-icon");
-    const label = btn.querySelector(".voice-label");
-    if (icon) icon.textContent = "◎";
-    if (label) label.textContent = "Voice Log";
+    const icon = btn.querySelector(".voice-icon") || $("#voice-fab-icon");
+    const label = btn.querySelector(".voice-label") || $("#voice-fab-label");
+    if (btn.id === "voice-fab") {
+      if ($("#voice-fab-icon")) $("#voice-fab-icon").textContent = "◎";
+      if ($("#voice-fab-label")) $("#voice-fab-label").textContent = "Speak";
+    } else {
+      if (icon) icon.textContent = "◎";
+      if (label) label.textContent = "Voice Log";
+    }
+    const bar = $("#voice-listen-bar");
+    if (bar) bar.hidden = true;
+  }
+
+  function isInAppScreen() {
+    return !!$("#screen-app") && $("#screen-app").classList.contains("active");
+  }
+
+  function handleVoiceCommand(raw) {
+    const t = String(raw || "").toLowerCase().replace(/[.,!?]/g, " ").replace(/\s+/g, " ").trim();
+    if (!t) {
+      toast("I didn’t catch that. Try “help”.");
+      return;
+    }
+    if (/help|what can i say|commands|voice help/.test(t)) {
+      toast("Try: go home, go track, open village, updates, settings, clock in, dirty diaper, sign in");
+      const bar = $("#voice-listen-bar");
+      if (bar) {
+        bar.hidden = false;
+        if ($("#voice-listen-title")) $("#voice-listen-title").textContent = "Voice commands";
+        if ($("#voice-listen-hint")) $("#voice-listen-hint").textContent = "go home · track · village · updates · me · settings · inbox · calendar · clock in · clock out · sign in · dirty diaper · help";
+        setTimeout(() => { if (bar && !$("#voice-fab")?.classList.contains("listening")) bar.hidden = true; }, 6000);
+      }
+      return;
+    }
+    if (/sign in|log in|login/.test(t)) {
+      if (isInAppScreen()) toast("You’re already signed in");
+      else { showAuthError("signin-error", ""); openModal("signin"); toast("Opening sign in"); }
+      return;
+    }
+    if (/create account|sign up|parent account/.test(t)) {
+      if (isInAppScreen()) openModal("settings");
+      else { showAuthError("signup-error", ""); openModal("signup"); }
+      toast("Opening parent account");
+      return;
+    }
+    if (/villager mode|join as villager|limb mode/.test(t)) {
+      openModal("limb-invite");
+      toast("Opening Villager join");
+      return;
+    }
+    if (/look around|preview|guest/.test(t)) {
+      if (!isInAppScreen()) enterGuestPreview();
+      else toast("You’re already in the app");
+      return;
+    }
+    if (/sign out|log out/.test(t)) {
+      if (isInAppScreen()) { signOutAccount(); toast("Signed out"); }
+      return;
+    }
+    if (!isInAppScreen()) {
+      toast("Sign in first, or say “look around”, “sign in”, or “create account”.");
+      return;
+    }
+    if (/^(go )?(to )?(home|start)$/.test(t) || t === "home") { showTab("home"); toast("Home"); return; }
+    if (/track|tracking|daily log|quick log/.test(t)) { showTab("track"); toast("Track"); return; }
+    if (/updates|recalls|safety/.test(t)) { showTab("updates"); toast("Updates"); return; }
+    if (/^(go )?(to )?(me|reminder)$/.test(t) || /reminder of me/.test(t)) { showTab("reminder"); toast("Me"); return; }
+    if (/developer|dev tab/.test(t)) { if (isParentAccount() && isDeveloperAccount(currentAccount)) { showTab("dev"); toast("Dev"); } else toast("Dev is only on the owner account"); return; }
+    if (/settings/.test(t)) { renderSettings(); openModal("settings"); toast("Settings"); return; }
+    if (/village/.test(t)) { updateVillageUI(); openModal("village"); toast("Village"); return; }
+    if (/inbox|care inbox/.test(t)) { if (isParentAccount()) { openInbox(); toast("Inbox"); } else toast("Inbox is for parents"); return; }
+    if (/calendar/.test(t)) { if (typeof openCalendar === "function") openCalendar(); toast("Calendar"); return; }
+    if (/clock in/.test(t)) { if (isLimbRole()) { clockInShift(); trackCloud("clockin", "Clocked in"); } else toast("Clock in is for Villagers"); return; }
+    if (/clock out/.test(t)) { if (isLimbRole()) clockOutShift(); else toast("Clock out is for Villagers"); return; }
+    parseVoiceLog(raw);
+    showTab("track");
+  }
+
+  function startVoiceListen(sourceBtn) {
+    const fab = $("#voice-fab");
+    const btn = sourceBtn || fab;
+    if (!btn || btn.classList.contains("listening")) return;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    btn.classList.add("listening");
+    if (fab) fab.classList.add("listening");
+    if ($("#voice-fab-icon")) $("#voice-fab-icon").textContent = "●";
+    if ($("#voice-fab-label")) $("#voice-fab-label").textContent = "Listening";
+    const bar = $("#voice-listen-bar");
+    if (bar) {
+      bar.hidden = false;
+      if ($("#voice-listen-title")) $("#voice-listen-title").textContent = "Listening…";
+      if ($("#voice-listen-hint")) $("#voice-listen-hint").textContent = "Try “go home”, “dirty diaper”, “open village”, or “help”.";
+    }
+    if (sourceBtn && sourceBtn.id === "voice-btn") {
+      const icon = sourceBtn.querySelector(".voice-icon");
+      const label = sourceBtn.querySelector(".voice-label");
+      if (icon) icon.textContent = "●";
+      if (label) label.textContent = "Listening...";
+    }
+    if (!SR) {
+      resetVoiceBtn(btn);
+      resetVoiceBtn(fab);
+      toast("Voice needs a browser or phone that can hear the mic. Try Chrome or the store app.");
+      return;
+    }
+    try {
+      const rec = new SR();
+      rec.lang = "en-US";
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      rec.onresult = (e) => {
+        const text = (e.results && e.results[0] && e.results[0][0] && e.results[0][0].transcript) || "";
+        btn.classList.remove("listening");
+        if (fab) fab.classList.remove("listening");
+        btn.classList.add("success");
+        if (fab) fab.classList.add("success");
+        if ($("#voice-fab-icon")) $("#voice-fab-icon").textContent = "✓";
+        if ($("#voice-fab-label")) $("#voice-fab-label").textContent = "Heard";
+        if (bar && $("#voice-listen-title")) $("#voice-listen-title").textContent = "Heard: " + text;
+        handleVoiceCommand(text);
+        setTimeout(() => { resetVoiceBtn(btn); resetVoiceBtn(fab); }, 1800);
+      };
+      rec.onerror = () => {
+        resetVoiceBtn(btn);
+        resetVoiceBtn(fab);
+        toast("Could not hear that — tap Speak and try again");
+      };
+      rec.onend = () => {
+        if (btn.classList.contains("listening")) {
+          resetVoiceBtn(btn);
+          resetVoiceBtn(fab);
+        }
+      };
+      rec.start();
+    } catch (err) {
+      resetVoiceBtn(btn);
+      resetVoiceBtn(fab);
+      toast("Voice is not available here — tap buttons instead");
+    }
   }
 
   function wireVoice() {
-    const btn = $("#voice-btn");
-    if (!btn) return;
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    btn.addEventListener("click", () => {
-      if (btn.classList.contains("listening")) return;
-      btn.classList.add("listening");
-      const icon = btn.querySelector(".voice-icon");
-      const label = btn.querySelector(".voice-label");
-      if (icon) icon.textContent = "●";
-      if (label) label.textContent = "Listening...";
-
-      if (SR) {
-        try {
-          const rec = new SR();
-          rec.lang = "en-US";
-          rec.interimResults = false;
-          rec.maxAlternatives = 1;
-          rec.onresult = (e) => {
-            const text = (e.results && e.results[0] && e.results[0][0] && e.results[0][0].transcript) || "";
-            btn.classList.remove("listening");
-            btn.classList.add("success");
-            if (icon) icon.textContent = "✓";
-            if (label) label.textContent = "Logged";
-            parseVoiceLog(text);
-            setTimeout(() => resetVoiceBtn(btn), 2200);
-          };
-          rec.onerror = () => {
-            resetVoiceBtn(btn);
-            toast("Could not hear that — try again or tap a log button");
-          };
-          rec.onend = () => {
-            if (btn.classList.contains("listening")) resetVoiceBtn(btn);
-          };
-          rec.start();
-          return;
-        } catch (err) {
-          resetVoiceBtn(btn);
-          toast("Voice logging is not available here — tap a log button instead");
-          return;
-        }
-      }
-
-      resetVoiceBtn(btn);
-      toast("Voice logging is not available here — tap a log button instead");
-    });
+    $("#voice-btn")?.addEventListener("click", () => startVoiceListen($("#voice-btn")));
+    $("#voice-fab")?.addEventListener("click", () => startVoiceListen($("#voice-fab")));
   }
 
 
