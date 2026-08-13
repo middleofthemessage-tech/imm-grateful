@@ -1005,12 +1005,13 @@ body.color-high {
 .font-option small { display: block; margin-top: 2px; }
 
 .loading-hello {
-  font-family: var(--serif);
-  font-size: 26px;
-  font-weight: 600;
-  line-height: 1.3;
-  margin-bottom: 14px;
-  max-width: 320px;
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 4px 0 16px;
+  max-width: min(360px, 86vw);
+  opacity: 0.95;
 }
 .loading-quote {
   font-size: 17px !important;
@@ -2559,6 +2560,16 @@ a:focus:not(:focus-visible) { outline: none; }
           <p class="auth-step-label">3 · About your little one</p>
           <label class="field-label" for="su-child-name">Child's name <span class="field-hint">(optional)</span></label>
           <input class="field-input" id="su-child-name" type="text" maxlength="40" placeholder="Leave blank to keep private" />
+          <label class="field-label">How should we address them?</label>
+          <div class="chip-row wrap" id="su-address-chips">
+            <button type="button" class="date-chip active" data-addr="name">Their name</button>
+            <button type="button" class="date-chip" data-addr="blessing">Blessing</button>
+            <button type="button" class="date-chip" data-addr="bean">Bean</button>
+            <button type="button" class="date-chip" data-addr="little-one">Little one</button>
+            <button type="button" class="date-chip" data-addr="custom">Custom</button>
+          </div>
+          <input class="field-input" id="su-address-custom" type="text" maxlength="30" placeholder="e.g. peanut, sunshine" hidden />
+          <p class="field-note">Used on the welcome screen: “mom of Emma” or “dad of your blessing.”</p>
           <label class="field-label" for="su-birthday">Child's birthday <span class="field-hint">(optional)</span></label>
           <input class="field-input" id="su-birthday" type="date" />
           <label class="field-label" for="su-zip">Home zip code <span class="field-hint">(optional · local recalls)</span></label>
@@ -2631,6 +2642,7 @@ a:focus:not(:focus-visible) { outline: none; }
         </div>
         <p class="loading-quote" id="loading-quote"></p>
         <p class="loading-ref" id="loading-ref"></p>
+        <p class="loading-hello" id="loading-hello"></p>
         <div class="load-bar" aria-hidden="true"><span class="load-bar-fill"></span></div>
       </div>
     </section>
@@ -4353,6 +4365,11 @@ a:focus:not(:focus-visible) { outline: none; }
       milestonesEnabled: true,
       trackingEnabled: true,
       limbUpdateMode: "endshift",
+      childAddress: "name",
+      childAddressCustom: "",
+      notifyEmail: true,
+      notifySms: true,
+      digestLastSent: "",
     };
   }
   function applyAccountToProfile(account) {
@@ -4441,6 +4458,8 @@ a:focus:not(:focus-visible) { outline: none; }
     const password2 = $("#su-password2")?.value || "";
     const parentRole = $("#su-role-chips .date-chip.active")?.dataset?.prole || "mom";
     const childName = ($("#su-child-name")?.value || "").trim();
+    const childAddress = $("#su-address-chips .date-chip.active")?.dataset?.addr || "name";
+    const childAddressCustom = ($("#su-address-custom")?.value || "").trim();
     const birthday = $("#su-birthday")?.value || "";
     const zip = ($("#su-zip")?.value || "").trim() || "99701";
     const feedingMethods = $$("#su-feeding .multi-chip.on").map((c) => c.dataset.feed);
@@ -4499,9 +4518,14 @@ a:focus:not(:focus-visible) { outline: none; }
           inviteCode: generateInviteCode(),
           trackingEnabled,
           limbUpdateMode,
+          childAddress,
+          childAddressCustom,
+          notifyEmail: true,
+          notifySms: true,
         },
       });
       writeHouseholdFor(account.id, { trackingEnabled, limbUpdateMode });
+      sendWelcomeNotify({ email, phone, name: firstName, role: "parent" });
       // register invite for limb joins
       try {
         const map = JSON.parse(localStorage.getItem("mh_invite_map_v1") || "{}");
@@ -4632,6 +4656,7 @@ a:focus:not(:focus-visible) { outline: none; }
           householdId: parentId,
         },
       });
+      sendWelcomeNotify({ email, phone, name: firstName, role: "limb" });
       toast("You’re in as Limb · " + firstName);
     } catch (err) {
       console.error(err);
@@ -4710,26 +4735,28 @@ a:focus:not(:focus-visible) { outline: none; }
     profile = loadProfile();
     applyAccountToProfile(account);
     document.body.dataset.role = account.role === "limb" ? "limb" : "parent";
-    showScreen("screen-app");
-    applyRoleUI();
-    applyTrackingVisibility();
-    updateHomeDateLine();
-    const greet = profile.userName || account.firstName || "";
-    const homeGreet = document.querySelector(".home-greeting");
-    if (homeGreet) homeGreet.textContent = "Hello " + (greet || "there");
     applyAppData(loadAppData());
     loadInbox();
-    if (account.role !== "limb") {
-      try { ensureInviteCode(); updateVillageUI(); } catch (e) {}
-    }
-    try {
-      renderLogs();
-      renderMilestones();
-      if (typeof renderDailyTip === "function") renderDailyTip();
-      if (typeof renderInterestGroups === "function") renderInterestGroups();
-      if (typeof renderCareReminders === "function") renderCareReminders();
-      if (typeof renderAppointments === "function") renderAppointments();
-    } catch (e) {}
+    showLoadingThen(() => {
+      showScreen("screen-app");
+      applyRoleUI();
+      applyTrackingVisibility();
+      updateHomeDateLine();
+      const greet = profile.userName || account.firstName || "";
+      const homeGreet = document.querySelector(".home-greeting");
+      if (homeGreet) homeGreet.textContent = "Hello " + (greet || "there");
+      if (account.role !== "limb") {
+        try { ensureInviteCode(); updateVillageUI(); } catch (e) {}
+      }
+      try {
+        renderLogs();
+        renderMilestones();
+        if (typeof renderDailyTip === "function") renderDailyTip();
+        if (typeof renderInterestGroups === "function") renderInterestGroups();
+        if (typeof renderCareReminders === "function") renderCareReminders();
+        if (typeof renderAppointments === "function") renderAppointments();
+      } catch (e) {}
+    });
     return true;
   }
   function wireAccountAuth() {
@@ -4767,6 +4794,14 @@ a:focus:not(:focus-visible) { outline: none; }
     $("#si-submit")?.addEventListener("click", () => signInFromForm());
     $("#su-scripture")?.addEventListener("click", () => $("#su-scripture").classList.toggle("on"));
     $("#su-tracking")?.addEventListener("click", () => $("#su-tracking").classList.toggle("on"));
+    $$("#su-address-chips .date-chip").forEach((c) => {
+      c.addEventListener("click", () => {
+        $$("#su-address-chips .date-chip").forEach((x) => x.classList.remove("active"));
+        c.classList.add("active");
+        const custom = $("#su-address-custom");
+        if (custom) custom.hidden = c.dataset.addr !== "custom";
+      });
+    });
     $$("#su-update-chips .date-chip").forEach((c) => {
       c.addEventListener("click", () => {
         $$("#su-update-chips .date-chip").forEach((x) => x.classList.remove("active"));
@@ -4869,6 +4904,10 @@ a:focus:not(:focus-visible) { outline: none; }
   if (profile.milestonesEnabled === undefined) profile.milestonesEnabled = true;
   if (profile.trackingEnabled === undefined) profile.trackingEnabled = true;
   if (!profile.limbUpdateMode) profile.limbUpdateMode = "endshift";
+  if (!profile.childAddress) profile.childAddress = "name";
+  if (profile.childAddressCustom === undefined) profile.childAddressCustom = "";
+  if (profile.notifyEmail === undefined) profile.notifyEmail = true;
+  if (profile.notifySms === undefined) profile.notifySms = true;
 
 
   function getChildren() {
@@ -4892,6 +4931,28 @@ a:focus:not(:focus-visible) { outline: none; }
     const raw = ((c && c.name) || profile.childName || "").trim();
     if (raw) return raw;
     return formal ? "Child" : "your little one";
+  }
+  function parentRoleWord() {
+    return profile.parentRole === "dad" ? "dad" : "mom";
+  }
+  function displayChildAddress() {
+    const mode = profile.childAddress || "name";
+    const named = ((typeof getActiveChild === "function" && getActiveChild() && getActiveChild().name) || profile.childName || "").trim();
+    if (mode === "name" && named) return named;
+    if (mode === "bean") return "your bean";
+    if (mode === "blessing") return "your blessing";
+    if (mode === "little-one") return "your little one";
+    if (mode === "custom") {
+      const custom = (profile.childAddressCustom || "").trim();
+      return custom ? (/^(your|my)\s/i.test(custom) ? custom : "your " + custom) : (named || "your blessing");
+    }
+    if (named) return named;
+    return "your blessing";
+  }
+  function welcomeLine() {
+    const name = (typeof getUserFirstName === "function" ? getUserFirstName() : "") || "friend";
+    if (isLimbRole()) return "Welcome " + name;
+    return "Welcome " + name + ", " + parentRoleWord() + " of " + displayChildAddress();
   }
   function displayChildNameList(kids) {
     return (kids || getChildren()).map((k) => (k.name || "").trim() || "Child").join(", ");
@@ -5166,16 +5227,91 @@ a:focus:not(:focus-visible) { outline: none; }
   function showLoadingThen(callback) {
     const loading = $("#screen-loading");
     const verse = pickLoadingVerse();
-    if ($("#loading-hello")) $("#loading-hello").textContent = "";
     if ($("#loading-quote")) $("#loading-quote").textContent = verse.text;
     if ($("#loading-ref")) $("#loading-ref").textContent = verse.ref + " · CSB";
+    if ($("#loading-hello")) $("#loading-hello").textContent = welcomeLine();
     $$(".screen").forEach((s) => s.classList.remove("active"));
     if (loading) loading.classList.add("active");
     setTimeout(() => {
       if (loading) loading.classList.remove("active");
       if (typeof callback === "function") callback();
       maybeShowDailyScripture();
-    }, 2400);
+      maybeSendDailyDigest();
+    }, 2800);
+  }
+
+  async function sendNotify(payload) {
+    try {
+      const res = await fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      return await res.json();
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  }
+
+  function sendWelcomeNotify(opts) {
+    opts = opts || {};
+    const email = opts.email || profile.email || (currentAccount && currentAccount.email) || "";
+    const phone = opts.phone || profile.phone || (currentAccount && currentAccount.phone) || "";
+    const name = opts.name || getUserFirstName();
+    const limb = opts.role === "limb" || isLimbRole();
+    const subject = "Welcome to In the Middle of the [Mess]age";
+    const text = limb
+      ? `Hi ${name},\n\nYour Limb account is ready. Clock in when you start a shift so tracking unlocks and parents stay in the loop.\n\nIn the Middle of the [Mess]age\nA break for your brain.`
+      : `Hi ${name},\n\nYour parent account is ready. You are signed in as ${parentRoleWord()} of ${displayChildAddress()}.\n\nWe'll send a short CSB verse and safety/recall notes to this email. You can change that in Settings.\n\nIn the Middle of the [Mess]age\nA break for your brain.`;
+    return sendNotify({
+      type: "welcome",
+      email,
+      phone,
+      subject,
+      text,
+      sendEmail: profile.notifyEmail !== false,
+      sendSms: profile.notifySms !== false,
+    }).then((r) => {
+      if (r && r.ok) toast("Confirmation sent to your email and phone");
+      else toast("Account created · confirmation is on its way");
+      return r;
+    });
+  }
+
+  function maybeSendDailyDigest() {
+    if (profile.notifyEmail === false && profile.notifySms === false) return;
+    const today = new Date().toISOString().slice(0, 10);
+    if (profile.digestLastSent === today) return;
+    const t = profile.scriptureTime || "15:00";
+    const parts = String(t).split(":");
+    const minsSet = (Number(parts[0]) || 0) * 60 + (Number(parts[1]) || 0);
+    const now = new Date();
+    if (now.getHours() * 60 + now.getMinutes() < minsSet) return;
+    const verse = pickScripture();
+    const top = (typeof getFilteredRecalls === "function" ? getFilteredRecalls() : (RECALLS || [])).slice(0, 4);
+    const recallLines = top.length
+      ? top.map((r) => "• " + (r.product || r.title) + " (" + (r.source || "alert") + ")").join("\n")
+      : "• No new filtered recalls in your list right now. Check cpsc.gov/Recalls and fda.gov for the full official lists.";
+    const subject = "Today’s verse + safety notes";
+    const text =
+      (welcomeLine() + "\n\n") +
+      "Scripture of the day (" + verse.ref + " · CSB)\n“" + verse.text + "”\n\n" +
+      "Safety & recalls\n" + recallLines + "\n\n" +
+      "In the Middle of the [Mess]age";
+    sendNotify({
+      type: "digest",
+      email: profile.email || (currentAccount && currentAccount.email) || "",
+      phone: profile.notifySms === false ? "" : (profile.phone || (currentAccount && currentAccount.phone) || ""),
+      subject,
+      text,
+      sendEmail: profile.notifyEmail !== false,
+      sendSms: false,
+    }).then((r) => {
+      if (r && r.ok) {
+        profile.digestLastSent = today;
+        saveProfile();
+      }
+    });
   }
 
   function maybeShowDailyScripture() {
@@ -6221,7 +6357,17 @@ a:focus:not(:focus-visible) { outline: none; }
         <div id="settings-children-list"></div>
         <label class="field-label" for="set-child-name">Active child name <span class="field-hint">(optional)</span></label>
         <input class="field-input" id="set-child-name" type="text" value="${escapeHtml(profile.childName || "")}" maxlength="40" placeholder="Leave blank to keep private" />
-        <p class="field-note" style="margin-top:4px">Blank = “your little one” in the app. Never required.</p>
+        <p class="field-note" style="margin-top:4px">Blank = we use your chosen nickname (blessing, bean, or custom). Never required.</p>
+        <label class="field-label">How should we address them?</label>
+        <div class="chip-row wrap" id="set-address-chips">
+          <button type="button" class="date-chip${(profile.childAddress||"name")==="name"?" active":""}" data-addr="name">Their name</button>
+          <button type="button" class="date-chip${profile.childAddress==="blessing"?" active":""}" data-addr="blessing">Blessing</button>
+          <button type="button" class="date-chip${profile.childAddress==="bean"?" active":""}" data-addr="bean">Bean</button>
+          <button type="button" class="date-chip${profile.childAddress==="little-one"?" active":""}" data-addr="little-one">Little one</button>
+          <button type="button" class="date-chip${profile.childAddress==="custom"?" active":""}" data-addr="custom">Custom</button>
+        </div>
+        <input class="field-input" id="set-address-custom" type="text" maxlength="30" value="${escapeHtml(profile.childAddressCustom || "")}" placeholder="e.g. peanut, sunshine" ${profile.childAddress==="custom" ? "" : "hidden"} />
+        <p class="field-note">Welcome screen: “Welcome ${escapeHtml(profile.userName || "you")}, ${escapeHtml(profile.parentRole === "dad" ? "dad" : "mom")} of ${escapeHtml((profile.childAddress==="bean" && "your bean") || (profile.childAddress==="blessing" && "your blessing") || profile.childName || "your blessing")}.”</p>
         <label class="field-label" for="set-birthday">Birthday <span class="field-hint">(optional)</span></label>
         <input class="field-input" id="set-birthday" type="date" value="${escapeHtml(profile.birthday || "")}" />
         <label class="field-label" for="set-zip">Home zip code <span class="field-hint">(optional · local recalls)</span></label>
@@ -6274,6 +6420,16 @@ a:focus:not(:focus-visible) { outline: none; }
       <label class="field-label" for="set-scripture-time">Preferred time</label>
       <input type="time" id="set-scripture-time" class="text-input" value="${escapeHtml(profile.scriptureTime || "15:00")}" />
       <p class="field-note">Christian Standard Bible® (CSB). Short verses with publisher attribution. Change time or turn off anytime.</p>
+      <div class="settings-sec">Email &amp; texts</div>
+      <div class="settings-row">
+        <span>Confirmation &amp; daily verse + recall emails</span>
+        <div class="toggle${profile.notifyEmail !== false ? " on" : ""}" id="tog-notify-email"></div>
+      </div>
+      <div class="settings-row">
+        <span>Confirmation texts</span>
+        <div class="toggle${profile.notifySms !== false ? " on" : ""}" id="tog-notify-sms"></div>
+      </div>
+      <p class="field-note">We send a welcome email and text at signup, then a daily CSB verse with current safety/recall notes to your email.</p>
       <div class="settings-sec">Pump tip reminder</div>
       <div class="settings-row">
         <span>Weekly pump tip</span>
@@ -6359,6 +6515,34 @@ a:focus:not(:focus-visible) { outline: none; }
       saveProfile();
       applyMilestonesVisibility();
       toast(profile.milestonesEnabled ? "Milestones on" : "Milestones hidden");
+    });
+    $$("#set-address-chips .date-chip").forEach((c) => {
+      c.addEventListener("click", () => {
+        profile.childAddress = c.dataset.addr || "name";
+        const custom = $("#set-address-custom");
+        if (custom) custom.hidden = profile.childAddress !== "custom";
+        $$("#set-address-chips .date-chip").forEach((x) => x.classList.toggle("active", x === c));
+        saveProfile();
+        toast("We'll say: " + welcomeLine());
+      });
+    });
+    $("#set-address-custom")?.addEventListener("change", () => {
+      profile.childAddressCustom = ($("#set-address-custom").value || "").trim();
+      saveProfile();
+    });
+    $("#tog-notify-email")?.addEventListener("click", () => {
+      const el = $("#tog-notify-email");
+      el.classList.toggle("on");
+      profile.notifyEmail = el.classList.contains("on");
+      saveProfile();
+      toast(profile.notifyEmail ? "Daily verse + recall emails on" : "Email notes off");
+    });
+    $("#tog-notify-sms")?.addEventListener("click", () => {
+      const el = $("#tog-notify-sms");
+      el.classList.toggle("on");
+      profile.notifySms = el.classList.contains("on");
+      saveProfile();
+      toast(profile.notifySms ? "Confirmation texts on" : "Texts off");
     });
     $("#tog-parent-track")?.addEventListener("click", () => {
       const el = $("#tog-parent-track");
@@ -6450,6 +6634,7 @@ a:focus:not(:focus-visible) { outline: none; }
     }
     $("#set-save-profile")?.addEventListener("click", () => {
       profile.childName = ($("#set-child-name")?.value || "").trim();
+      profile.childAddressCustom = ($("#set-address-custom")?.value || "").trim();
       profile.birthday = $("#set-birthday")?.value || "";
       profile.zip = ($("#set-zip")?.value || "").trim() || "99701";
       profile.feedingMethods = $$("#set-feeding .multi-chip.on").map((c) => c.dataset.feed);
