@@ -708,6 +708,8 @@ body.role-limb .parent-only { display: none !important; }
 body.role-limb #track-care-limb { display: block !important; }
 body.role-limb #track-care-parent { display: none !important; }
 body.role-parent #track-care-limb { display: none !important; }
+body.feat-no-milestones .subtab[data-sub="milestones"] { display: none !important; }
+body.feat-no-milestones #sub-milestones { display: none !important; }
 
 /* Font themes */
 
@@ -727,8 +729,8 @@ body.role-parent #track-care-limb { display: none !important; }
   text-align: center;
 }
 .loading-logo {
-  margin-bottom: 28px;
-  max-width: min(300px, 78vw);
+  margin-bottom: 22px;
+  max-width: min(260px, 72vw);
   line-height: 0;
 }
 .loading-logo-img {
@@ -755,11 +757,12 @@ body.role-parent #track-care-limb { display: none !important; }
 }
 .loading-quote {
   font-family: var(--serif);
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 500;
-  line-height: 1.45;
-  max-width: 320px;
-  margin-bottom: 16px;
+  line-height: 1.5;
+  max-width: min(360px, 86vw);
+  margin-bottom: 10px;
+  opacity: 0.95;
 }
 .loading-credit {
   font-size: 11px;
@@ -935,17 +938,17 @@ body.color-high {
 .loading-quote {
   font-size: 17px !important;
   font-weight: 500 !important;
-  line-height: 1.45 !important;
-  opacity: 0.95;
-  max-width: 320px;
-  margin-bottom: 14px !important;
+  line-height: 1.5 !important;
+  opacity: 0.94;
+  max-width: min(360px, 86vw);
+  margin-bottom: 10px !important;
 }
 .loading-ref {
-  font-size: 12px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.4px;
-  opacity: 0.8;
-  margin-bottom: 10px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.3px;
+  opacity: 0.72;
+  margin-bottom: 18px !important;
   text-transform: none !important;
 }
 
@@ -2533,17 +2536,12 @@ a:focus:not(:focus-visible) { outline: none; }
     <!-- Loading encouragement -->
     <section id="screen-loading" class="screen">
       <div class="loading-bg">
-        <div class="loading-anim" aria-hidden="true">
-          <div class="load-ring"></div>
-          <div class="load-ring load-ring-2"></div>
-        </div>
         <div class="loading-logo">
           <img src="logo-main.jpg" alt="In the Middle of the [Mess]age" class="loading-logo-img" />
         </div>
-        <p class="loading-hello" id="loading-hello"></p>
         <p class="loading-quote" id="loading-quote"></p>
+        <p class="loading-ref" id="loading-ref"></p>
         <div class="load-bar" aria-hidden="true"><span class="load-bar-fill"></span></div>
-        <div class="loading-dots" aria-hidden="true"><span></span><span></span><span></span></div>
       </div>
     </section>
 
@@ -2718,13 +2716,15 @@ a:focus:not(:focus-visible) { outline: none; }
           <div id="sub-milestones" class="sub-panel">
             <div class="mile-progress">
               <div>
-                <strong>4-month milestones</strong>
-                <p class="muted" id="mile-progress-text">0 of 8 checked</p>
+                <strong id="mile-band-title">Milestones</strong>
+                <p class="muted" id="mile-progress-text">0 checked</p>
                 <div class="bar"><div class="bar-fill" id="mile-bar" style="width:0%"></div></div>
               </div>
               <span class="mile-star">✦</span>
             </div>
-            <p class="src-note">Sources: CDC · AAP · WHO — ages are approximate ranges, not deadlines.</p>
+            <p class="src-note" id="mile-age-note">Add a birthday in Settings so we can match the checklist to your child’s age. Ages are ranges, not deadlines.</p>
+            <div class="chip-row wrap" id="mile-age-chips"></div>
+            <p class="src-note">Sources: CDC · AAP · WHO — check with your pediatrician if you have concerns.</p>
             <div id="milestone-list"></div>
           </div>
         </div>
@@ -3449,16 +3449,100 @@ a:focus:not(:focus-visible) { outline: none; }
     { id: "moss", name: "Deep Moss & Oat", desc: "Rich deep green with warm oat", launch: "#4A6A50", home: "#EAF0E4", accent: "#2A4A30", preview: ["#4A6A50", "#EAF0E4", "#F5F7F2"], dark: false },
   ];
 
-  const MILESTONES = [
-    { id: "4-1", category: "Motor", source: "CDC", label: "Holds head steady and erect" },
-    { id: "4-2", category: "Motor", source: "AAP", label: "Bears weight on legs when held upright" },
-    { id: "4-3", category: "Motor", source: "WHO", label: "Reaches for objects with one hand" },
-    { id: "4-4", category: "Vision", source: "CDC", label: "Tracks objects from side to side (180°)" },
-    { id: "4-5", category: "Social", source: "AAP", label: "Smiles spontaneously, especially at people" },
-    { id: "4-6", category: "Language", source: "CDC", label: "Babbles with expression and variety" },
-    { id: "4-7", category: "Social", source: "AAP", label: "Enjoys playing and may cry when play stops" },
-    { id: "4-8", category: "Motor", source: "WHO", label: "Brings objects to mouth" },
+  const MILESTONE_BANDS = [
+    { id: "2", months: 2, from: 0, to: 3, label: "2 months" },
+    { id: "4", months: 4, from: 3, to: 5, label: "4 months" },
+    { id: "6", months: 6, from: 5, to: 8, label: "6 months" },
+    { id: "9", months: 9, from: 8, to: 11, label: "9 months" },
+    { id: "12", months: 12, from: 11, to: 15, label: "12 months" },
+    { id: "18", months: 18, from: 15, to: 21, label: "18 months" },
+    { id: "24", months: 24, from: 21, to: 30, label: "2 years" },
+    { id: "36", months: 36, from: 30, to: 42, label: "3 years" },
+    { id: "48", months: 48, from: 42, to: 54, label: "4 years" },
+    { id: "60", months: 60, from: 54, to: 240, label: "5 years" },
   ];
+
+  const MILESTONES = [
+    { id: "2-1", band: "2", category: "Social", source: "CDC", label: "Calms down when spoken to or picked up" },
+    { id: "2-2", band: "2", category: "Social", source: "AAP", label: "Looks at your face" },
+    { id: "2-3", band: "2", category: "Language", source: "CDC", label: "Makes sounds other than crying" },
+    { id: "2-4", band: "2", category: "Language", source: "CDC", label: "Reacts to loud sounds" },
+    { id: "2-5", band: "2", category: "Vision", source: "CDC", label: "Watches you as you move" },
+    { id: "2-6", band: "2", category: "Motor", source: "CDC", label: "Holds head up when on tummy" },
+    { id: "2-7", band: "2", category: "Motor", source: "WHO", label: "Moves both arms and both legs" },
+    { id: "2-8", band: "2", category: "Motor", source: "AAP", label: "Opens hands briefly" },
+    { id: "4-1", band: "4", category: "Social", source: "AAP", label: "Smiles on their own to get your attention" },
+    { id: "4-2", band: "4", category: "Social", source: "CDC", label: "Chuckles when you try to make them laugh" },
+    { id: "4-3", band: "4", category: "Language", source: "CDC", label: "Makes sounds like ooo and aahh (cooing)" },
+    { id: "4-4", band: "4", category: "Vision", source: "CDC", label: "If hungry, opens mouth when seeing breast or bottle" },
+    { id: "4-5", band: "4", category: "Vision", source: "CDC", label: "Looks at their hands with interest" },
+    { id: "4-6", band: "4", category: "Motor", source: "CDC", label: "Holds head steady without support" },
+    { id: "4-7", band: "4", category: "Motor", source: "WHO", label: "Holds a toy when you put it in their hand" },
+    { id: "4-8", band: "4", category: "Motor", source: "AAP", label: "Pushes up onto elbows/forearms when on tummy" },
+    { id: "6-1", band: "6", category: "Social", source: "CDC", label: "Knows familiar people" },
+    { id: "6-2", band: "6", category: "Social", source: "AAP", label: "Likes to look at self in a mirror" },
+    { id: "6-3", band: "6", category: "Language", source: "CDC", label: "Takes turns making sounds with you" },
+    { id: "6-4", band: "6", category: "Language", source: "CDC", label: "Blows raspberries and makes squealing sounds" },
+    { id: "6-5", band: "6", category: "Motor", source: "CDC", label: "Rolls from tummy to back" },
+    { id: "6-6", band: "6", category: "Motor", source: "WHO", label: "Pushes up with straight arms when on tummy" },
+    { id: "6-7", band: "6", category: "Motor", source: "AAP", label: "Leans on hands to support sitting" },
+    { id: "6-8", band: "6", category: "Feeding", source: "AAP", label: "Opens mouth to a spoon" },
+    { id: "9-1", band: "9", category: "Social", source: "CDC", label: "Is shy, clingy, or fearful around strangers" },
+    { id: "9-2", band: "9", category: "Social", source: "AAP", label: "Shows several facial expressions (happy, sad, angry, surprised)" },
+    { id: "9-3", band: "9", category: "Language", source: "CDC", label: "Makes many different sounds like mamamama and babababa" },
+    { id: "9-4", band: "9", category: "Language", source: "CDC", label: "Lifts arms to be picked up" },
+    { id: "9-5", band: "9", category: "Motor", source: "CDC", label: "Sits without support" },
+    { id: "9-6", band: "9", category: "Motor", source: "WHO", label: "Moves things from one hand to the other" },
+    { id: "9-7", band: "9", category: "Motor", source: "AAP", label: "Uses fingers to rake food toward self" },
+    { id: "9-8", band: "9", category: "Motor", source: "CDC", label: "Gets to a sitting position by self" },
+    { id: "12-1", band: "12", category: "Social", source: "CDC", label: "Plays games like pat-a-cake" },
+    { id: "12-2", band: "12", category: "Language", source: "CDC", label: "Waves bye-bye" },
+    { id: "12-3", band: "12", category: "Language", source: "CDC", label: "Calls a parent mama or dada or another special name" },
+    { id: "12-4", band: "12", category: "Language", source: "AAP", label: "Understands no (pauses or stops briefly)" },
+    { id: "12-5", band: "12", category: "Motor", source: "CDC", label: "Pulls up to stand" },
+    { id: "12-6", band: "12", category: "Motor", source: "WHO", label: "Walks holding on to furniture (cruising)" },
+    { id: "12-7", band: "12", category: "Motor", source: "CDC", label: "Picks up things with thumb and pointer finger" },
+    { id: "12-8", band: "12", category: "Feeding", source: "AAP", label: "Drinks from a cup without a lid as you hold it" },
+    { id: "18-1", band: "18", category: "Social", source: "CDC", label: "Points to show you something interesting" },
+    { id: "18-2", band: "18", category: "Social", source: "AAP", label: "Puts hands out for you to wash them" },
+    { id: "18-3", band: "18", category: "Language", source: "CDC", label: "Tries to say three or more words besides mama or dada" },
+    { id: "18-4", band: "18", category: "Language", source: "CDC", label: "Follows one-step directions without gestures" },
+    { id: "18-5", band: "18", category: "Motor", source: "WHO", label: "Walks without holding on to anyone or anything" },
+    { id: "18-6", band: "18", category: "Motor", source: "CDC", label: "Scribbles" },
+    { id: "18-7", band: "18", category: "Motor", source: "AAP", label: "Climbs on and off a couch or chair without help" },
+    { id: "18-8", band: "18", category: "Feeding", source: "CDC", label: "Tries to use a spoon" },
+    { id: "24-1", band: "24", category: "Social", source: "CDC", label: "Notices when others are hurt or upset" },
+    { id: "24-2", band: "24", category: "Social", source: "AAP", label: "Looks at your face to see how to react in a new situation" },
+    { id: "24-3", band: "24", category: "Language", source: "CDC", label: "Points to things in a book when you ask" },
+    { id: "24-4", band: "24", category: "Language", source: "CDC", label: "Says at least two words together (more milk)" },
+    { id: "24-5", band: "24", category: "Motor", source: "WHO", label: "Kicks a ball" },
+    { id: "24-6", band: "24", category: "Motor", source: "CDC", label: "Runs" },
+    { id: "24-7", band: "24", category: "Motor", source: "AAP", label: "Walks up a few stairs with or without help" },
+    { id: "24-8", band: "24", category: "Motor", source: "CDC", label: "Eats with a spoon" },
+    { id: "36-1", band: "36", category: "Social", source: "CDC", label: "Calms down within 10 minutes after you leave" },
+    { id: "36-2", band: "36", category: "Social", source: "AAP", label: "Notices other children and joins them to play" },
+    { id: "36-3", band: "36", category: "Language", source: "CDC", label: "Talks with you in conversation using at least two back-and-forths" },
+    { id: "36-4", band: "36", category: "Language", source: "CDC", label: "Asks who, what, where, or why questions" },
+    { id: "36-5", band: "36", category: "Motor", source: "CDC", label: "Puts on some clothes by themselves" },
+    { id: "36-6", band: "36", category: "Motor", source: "WHO", label: "Uses a fork" },
+    { id: "36-7", band: "36", category: "Motor", source: "AAP", label: "Strings items together like large beads" },
+    { id: "48-1", band: "48", category: "Social", source: "CDC", label: "Pretends to be something else during play (teacher, superhero)" },
+    { id: "48-2", band: "48", category: "Social", source: "AAP", label: "Comforts others who are hurt or sad" },
+    { id: "48-3", band: "48", category: "Language", source: "CDC", label: "Says sentences with four or more words" },
+    { id: "48-4", band: "48", category: "Language", source: "CDC", label: "Talks about at least one thing that happened during the day" },
+    { id: "48-5", band: "48", category: "Motor", source: "CDC", label: "Catches a large ball most of the time" },
+    { id: "48-6", band: "48", category: "Motor", source: "AAP", label: "Serves themselves food or pours water with adult supervision" },
+    { id: "48-7", band: "48", category: "Motor", source: "WHO", label: "Unbuttons some buttons" },
+    { id: "60-1", band: "60", category: "Social", source: "CDC", label: "Follows rules or takes turns when playing with other children" },
+    { id: "60-2", band: "60", category: "Social", source: "AAP", label: "Sings, dances, or acts for you" },
+    { id: "60-3", band: "60", category: "Language", source: "CDC", label: "Tells a story they heard or made up with at least two events" },
+    { id: "60-4", band: "60", category: "Language", source: "CDC", label: "Answers simple questions about a book or story" },
+    { id: "60-5", band: "60", category: "Motor", source: "CDC", label: "Hops on one foot" },
+    { id: "60-6", band: "60", category: "Motor", source: "AAP", label: "Buttons some buttons" },
+    { id: "60-7", band: "60", category: "Motor", source: "WHO", label: "Can do a somersault" },
+  ];
+
+  let mileBandId = null;
 
   const CAT_COLORS = {
     Motor: { bg: "#E8F4E8", text: "#2D7A3A" },
@@ -4018,6 +4102,7 @@ a:focus:not(:focus-visible) { outline: none; }
       village: [],
       inviteCode: "",
       interests: [],
+      milestonesEnabled: true,
     };
   }
   function applyAccountToProfile(account) {
@@ -4502,6 +4587,7 @@ a:focus:not(:focus-visible) { outline: none; }
       village: [],
       inviteCode: "",
       interests: [],
+      milestonesEnabled: true,
     };
   }
   let profile = loadProfile();
@@ -4514,6 +4600,7 @@ a:focus:not(:focus-visible) { outline: none; }
   if (!profile.parentRole) profile.parentRole = "mom";
   if (!profile.zip) profile.zip = "99701";
   if (!Array.isArray(profile.interests)) profile.interests = [];
+  if (profile.milestonesEnabled === undefined) profile.milestonesEnabled = true;
 
 
   function getChildren() {
@@ -4770,35 +4857,57 @@ a:focus:not(:focus-visible) { outline: none; }
     applyColorMode(profile.colorMode);
   }
 
-  function showLoadingThen(callback) {
-    // Loading screen: personal greeting only — no scripture / verse refs
-    const loading = $("#screen-loading");
-    const name = (typeof getUserFirstName === "function" ? getUserFirstName() : null) || "friend";
+  const LOADING_VERSES = [
+    { ref: "Isaiah 40:11", text: "He gently leads those that are nursing." },
+    { ref: "Psalm 127:3", text: "Sons are indeed a heritage from the Lord, offspring, a reward." },
+    { ref: "Isaiah 41:10", text: "Do not fear, for I am with you; do not be afraid, for I am your God." },
+    { ref: "Lamentations 3:22-23", text: "His mercies never end. They are new every morning; great is your faithfulness!" },
+    { ref: "Matthew 11:28", text: "Come to me, all of you who are weary and burdened, and I will give you rest." },
+    { ref: "Psalm 46:1", text: "God is our refuge and strength, a helper who is always found in times of trouble." },
+    { ref: "Zephaniah 3:17", text: "He will be quiet in his love. He will delight in you with singing." },
+    { ref: "Psalm 23:1", text: "The Lord is my shepherd; I have what I need." },
+    { ref: "Isaiah 40:31", text: "Those who trust in the Lord will renew their strength." },
+    { ref: "1 Peter 5:7", text: "Casting all your cares on him, because he cares about you." },
+    { ref: "2 Corinthians 12:9", text: "My grace is sufficient for you, for my power is perfected in weakness." },
+    { ref: "Philippians 4:6", text: "Don’t worry about anything, but in everything, through prayer… present your requests to God." },
+    { ref: "Psalm 46:10", text: "Stop your fighting, and know that I am God." },
+    { ref: "Galatians 6:9", text: "Let us not get tired of doing good, for we will reap at the proper time if we don’t give up." },
+    { ref: "Colossians 3:23", text: "Whatever you do, do it from the heart, as something done for the Lord." },
+    { ref: "Joshua 1:9", text: "Do not be afraid or discouraged, for the Lord your God is with you wherever you go." },
+    { ref: "Psalm 28:7", text: "The Lord is my strength and my shield; my heart trusts in him, and I am helped." },
+    { ref: "Matthew 11:29", text: "I am lowly and humble in heart, and you will find rest for your souls." },
+  ];
+
+  function pickLoadingVerse() {
     const role = (typeof getEncourageRole === "function" ? getEncourageRole() : "mom");
-    const hellos = {
-      mom: [`Hello, ${name}!`, `Welcome, ${name}.`, `Hi, ${name}.`, `Welcome back, ${name}.`],
-      dad: [`Hello, ${name}!`, `Welcome, ${name}.`, `Hi, ${name}.`, `Welcome back, ${name}.`],
-      limb: [`Hello, ${name}!`, `Welcome, ${name}.`, `Hi, ${name}.`, `Thanks for helping, ${name}.`],
-    };
-    const soft = {
-      mom: ["You've got this today.", "One step at a time.", "Glad you're here.", "Caring counts — including yours."],
-      dad: ["Showing up matters.", "One step at a time.", "Glad you're here.", "Your presence counts."],
-      limb: ["Thank you for being here.", "You're a real help today.", "Glad you're here.", "Care given is care felt."],
-    };
-    const poolH = hellos[role] || hellos.mom;
-    const poolS = soft[role] || soft.mom;
-    const idx = (new Date().getDate() + new Date().getHours()) % poolH.length;
-    if ($("#loading-hello")) $("#loading-hello").textContent = poolH[idx];
-    if ($("#loading-quote")) $("#loading-quote").textContent = poolS[idx % poolS.length];
-    if ($("#loading-ref")) $("#loading-ref").textContent = "";
-    if ($("#loading-credit")) $("#loading-credit").textContent = "";
+    const extra = role === "limb"
+      ? SCRIPTURE_LIMB
+      : SCRIPTURE_PARENT;
+    const pool = LOADING_VERSES.concat(extra.map((v) => ({
+      ref: v.ref,
+      text: v.text.length > 140 ? v.text.slice(0, 137).replace(/\s+\S*$/, "") + "…" : v.text,
+    })));
+    let last = -1;
+    try { last = Number(sessionStorage.getItem("mh_load_verse") || "-1"); } catch (e) {}
+    let idx = Math.floor(Math.random() * pool.length);
+    if (pool.length > 1 && idx === last) idx = (idx + 1 + Math.floor(Math.random() * (pool.length - 1))) % pool.length;
+    try { sessionStorage.setItem("mh_load_verse", String(idx)); } catch (e) {}
+    return pool[idx];
+  }
+
+  function showLoadingThen(callback) {
+    const loading = $("#screen-loading");
+    const verse = pickLoadingVerse();
+    if ($("#loading-hello")) $("#loading-hello").textContent = "";
+    if ($("#loading-quote")) $("#loading-quote").textContent = verse.text;
+    if ($("#loading-ref")) $("#loading-ref").textContent = verse.ref + " · CSB";
     $$(".screen").forEach((s) => s.classList.remove("active"));
     if (loading) loading.classList.add("active");
     setTimeout(() => {
       if (loading) loading.classList.remove("active");
       if (typeof callback === "function") callback();
       maybeShowDailyScripture();
-    }, 2200);
+    }, 2400);
   }
 
   function maybeShowDailyScripture() {
@@ -4838,16 +4947,24 @@ a:focus:not(:focus-visible) { outline: none; }
     try { if (typeof saveAppData === "function") saveAppData(); } catch (e) {}
   }
 
-  function childAgeLabel(birthday) {
-    if (!birthday) return null;
-    const b = new Date(birthday + "T12:00:00");
+  function childAgeMonths(birthday) {
+    const raw = birthday || (typeof getActiveChild === "function" && getActiveChild() && getActiveChild().birthday) || (profile && profile.birthday) || "";
+    if (!raw) return null;
+    const b = new Date(raw + "T12:00:00");
     const now = new Date();
     if (isNaN(b.getTime()) || b > now) return null;
     let months = (now.getFullYear() - b.getFullYear()) * 12 + (now.getMonth() - b.getMonth());
     if (now.getDate() < b.getDate()) months -= 1;
-    if (months < 0) months = 0;
+    return months < 0 ? 0 : months;
+  }
+
+  function childAgeLabel(birthday) {
+    const months = childAgeMonths(birthday);
+    if (months == null) return null;
     if (months === 0) {
-      const days = Math.floor((now - b) / 86400000);
+      const raw = birthday || profile.birthday || "";
+      const b = new Date(raw + "T12:00:00");
+      const days = Math.floor((Date.now() - b.getTime()) / 86400000);
       return days <= 1 ? "1 day old" : days + " days old";
     }
     if (months < 24) return months === 1 ? "1 month old" : months + " months old";
@@ -4855,6 +4972,39 @@ a:focus:not(:focus-visible) { outline: none; }
     const rem = months % 12;
     if (rem === 0) return years === 1 ? "1 year old" : years + " years old";
     return years + (years === 1 ? " year" : " years") + ", " + rem + " mo";
+  }
+
+  function bandForAgeMonths(months) {
+    if (months == null) return MILESTONE_BANDS[1];
+    return MILESTONE_BANDS.find((b) => months >= b.from && months < b.to) || MILESTONE_BANDS[MILESTONE_BANDS.length - 1];
+  }
+
+  function currentMilestoneBand() {
+    if (mileBandId) {
+      const picked = MILESTONE_BANDS.find((b) => b.id === mileBandId);
+      if (picked) return picked;
+    }
+    return bandForAgeMonths(childAgeMonths());
+  }
+
+  function milestonesForBand(band) {
+    const id = (band && band.id) || currentMilestoneBand().id;
+    return MILESTONES.filter((m) => m.band === id);
+  }
+
+  function applyMilestonesVisibility() {
+    const on = profile.milestonesEnabled !== false;
+    document.body.classList.toggle("feat-no-milestones", !on);
+    const tab = document.querySelector('.subtab[data-sub="milestones"]');
+    if (tab) tab.hidden = !on;
+    if (!on) {
+      const panel = $("#sub-milestones");
+      if (panel && panel.classList.contains("active")) {
+        $$(".subtab").forEach((x) => x.classList.toggle("active", x.dataset.sub === "log"));
+        $$(".sub-panel").forEach((p) => p.classList.remove("active"));
+        $("#sub-log")?.classList.add("active");
+      }
+    }
   }
 
   function needsPumpTip() {
@@ -5178,10 +5328,40 @@ a:focus:not(:focus-visible) { outline: none; }
   }
 
   function renderMilestones() {
+    applyMilestonesVisibility();
     const root = $("#milestone-list");
     if (!root) return;
+    const ageMo = childAgeMonths();
+    const suggested = bandForAgeMonths(ageMo);
+    if (!mileBandId) mileBandId = suggested.id;
+    const band = currentMilestoneBand();
+    const list = milestonesForBand(band);
+    const title = $("#mile-band-title");
+    if (title) title.textContent = band.label + " milestones";
+    const note = $("#mile-age-note");
+    if (note) {
+      if (ageMo == null) {
+        note.textContent = "Add a birthday in Settings so we can match this checklist to your child’s age. Ages are ranges, not deadlines.";
+      } else {
+        const ageTxt = childAgeLabel() || (ageMo + " months");
+        note.textContent = displayChildName({ formal: true }) + " is " + ageTxt + " — showing the " + suggested.label + " checklist. You can peek at another age below.";
+      }
+    }
+    const chips = $("#mile-age-chips");
+    if (chips) {
+      chips.innerHTML = MILESTONE_BANDS.map((b) => {
+        const rec = ageMo != null && b.id === suggested.id;
+        return `<button type="button" class="date-chip${b.id === band.id ? " active" : ""}" data-band="${b.id}">${escapeHtml(b.label)}${rec ? " · now" : ""}</button>`;
+      }).join("");
+      $$("#mile-age-chips .date-chip").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          mileBandId = btn.dataset.band;
+          renderMilestones();
+        });
+      });
+    }
     const byCat = {};
-    MILESTONES.forEach((m) => {
+    list.forEach((m) => {
       if (!byCat[m.category]) byCat[m.category] = [];
       byCat[m.category].push(m);
     });
@@ -5195,22 +5375,23 @@ a:focus:not(:focus-visible) { outline: none; }
           <div class="milestone-row${done ? " done" : ""}" data-id="${m.id}">
             <span class="m-check">${done ? "✓" : ""}</span>
             <div>
-              <div class="m-txt">${m.label}</div>
-              <div class="m-src">${m.source}</div>
+              <div class="m-txt">${escapeHtml(m.label)}</div>
+              <div class="m-src">${escapeHtml(m.source)}</div>
             </div>
           </div>`;
       });
     });
+    if (!list.length) html = '<p class="src-note">No checklist for this age yet.</p>';
     root.innerHTML = html;
-    $$(".milestone-row").forEach((row) => {
+    $$("#milestone-list .milestone-row").forEach((row) => {
       row.addEventListener("click", () => {
         const id = row.dataset.id;
         if (achieved.has(id)) achieved.delete(id);
         else {
           achieved.add(id);
-          const m = MILESTONES.find((x) => x.id === id);
-          toast("Milestone reached · Village notified");
+          toast("Milestone reached");
         }
+        if (typeof saveAppData === "function") saveAppData();
         updateMileProgress();
         renderMilestones();
       });
@@ -5219,15 +5400,16 @@ a:focus:not(:focus-visible) { outline: none; }
   }
 
   function updateMileProgress() {
-    const n = achieved.size;
-    const total = MILESTONES.length;
+    const list = milestonesForBand(currentMilestoneBand());
+    const n = list.filter((m) => achieved.has(m.id)).length;
+    const total = list.length || 1;
     const pct = (n / total) * 100;
     const bar = $("#mile-bar");
     const text = $("#mile-progress-text");
     const badge = $("#mile-badge");
     if (bar) bar.style.width = pct + "%";
-    if (text) text.textContent = `${n} of ${total} checked`;
-    if (badge) badge.textContent = `${n}/${total}`;
+    if (text) text.textContent = `${n} of ${list.length} checked`;
+    if (badge) badge.textContent = `${n}/${list.length}`;
   }
 
   function renderFeed() {
@@ -5612,6 +5794,11 @@ a:focus:not(:focus-visible) { outline: none; }
       <p class="field-note" style="margin-top:0">Parent-only: get alerts when a <strong>Limb</strong> enters or leaves your home zone (200 ft – 5 mi). Limbs cannot turn this on or manage it. Open <strong>📍 Zone</strong> in the header. Off by default.</p>
       <div class="settings-sec">Features</div>
       <div class="settings-row"><span>Baby tracking</span><div class="toggle on" data-tog="track"></div></div>
+      <div class="settings-row">
+        <span>Milestones</span>
+        <div class="toggle${profile.milestonesEnabled !== false ? " on" : ""}" id="tog-milestones"></div>
+      </div>
+      <p class="field-note" style="margin-top:-4px;margin-bottom:8px">When on, Track shows a CDC / AAP / WHO checklist matched to your child’s age.</p>
       <div class="settings-row"><span>Shared tasks</span><div class="toggle on" data-tog="tasks"></div></div>
       <div class="settings-row"><span>Voice logging</span><div class="toggle on" data-tog="voice"></div></div>
       <div class="settings-row"><span>Safety recalls</span><div class="toggle on" data-tog="recalls"></div></div>
@@ -5660,6 +5847,14 @@ a:focus:not(:focus-visible) { outline: none; }
       profile.scriptureEnabled = el.classList.contains("on");
       saveProfile();
       toast(profile.scriptureEnabled ? "Daily scripture on" : "Daily scripture off");
+    });
+    $("#tog-milestones")?.addEventListener("click", () => {
+      const el = $("#tog-milestones");
+      el.classList.toggle("on");
+      profile.milestonesEnabled = el.classList.contains("on");
+      saveProfile();
+      applyMilestonesVisibility();
+      toast(profile.milestonesEnabled ? "Milestones on" : "Milestones hidden");
     });
     $("#set-scripture-time")?.addEventListener("change", () => {
       profile.scriptureTime = $("#set-scripture-time").value || "15:00";
@@ -5745,7 +5940,9 @@ a:focus:not(:focus-visible) { outline: none; }
         profile.children = kids;
       }
       saveProfile();
+      mileBandId = null;
       updateHomeDateLine();
+      renderMilestones();
       const trackBtn = $("#go-track strong");
       if (trackBtn) trackBtn.textContent = "Track " + displayChildName({ formal: true });
       toast(profile.childName ? "Child info saved" : "Saved — child name kept private");
@@ -6004,7 +6201,7 @@ a:focus:not(:focus-visible) { outline: none; }
         <div class="care-doc-empty">No growth measurements logged yet</div>
       </div>`;
     }
-    if (tracks.includes("milestones")) {
+    if (tracks.includes("milestones") && profile.milestonesEnabled !== false) {
       const done = MILESTONES.filter((m) => achieved.has(m.id));
       html += `<div class="care-doc-section"><h4>Milestones</h4>`;
       if (!done.length) html += `<div class="care-doc-empty">No milestones checked yet</div>`;
@@ -7385,6 +7582,7 @@ a:focus:not(:focus-visible) { outline: none; }
   // Init
   function init() {
     applyReadability();
+    applyMilestonesVisibility();
     updateHomeDateLine();
     wireOnboarding();
     wirePumpTip();
