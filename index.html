@@ -2664,6 +2664,9 @@ a:focus:not(:focus-visible) { outline: none; }
             <button type="button" class="date-chip active" data-prole="mom">Mom</button>
             <button type="button" class="date-chip" data-prole="dad">Dad / Co-parent</button>
           </div>
+          <label class="field-label" for="su-join-code">Household invite code <span class="field-hint">(optional · joining as the second parent)</span></label>
+          <input class="field-input" id="su-join-code" type="text" maxlength="24" placeholder="e.g. MM-ABC123" autocomplete="off" />
+          <p class="field-note">Leave blank to start a new home. If mom or dad already has IMM, enter their Village invite code so you share tracking, reminders, and the calendar.</p>
 
           <p class="auth-step-label">3 · About your little one</p>
           <label class="field-label" for="su-child-name">Child's name <span class="field-hint">(optional)</span></label>
@@ -4638,6 +4641,7 @@ a:focus:not(:focus-visible) { outline: none; }
     if (account.parentRole === "dad" || account.parentRole === "mom" || account.parentRole === "limb") {
       profile.parentRole = account.parentRole;
     }
+    if (account.householdId) profile.householdId = account.householdId;
   }
   function enterAppAs(account, opts) {
     opts = opts || {};
@@ -4736,6 +4740,15 @@ a:focus:not(:focus-visible) { outline: none; }
     if (btn) { btn.disabled = true; btn.textContent = "Creating…"; }
     try {
       const { hash, salt } = await hashPassword(password);
+      const joinCode = ($("#su-join-code")?.value || "").trim().toUpperCase();
+      let homeId = null;
+      if (joinCode) {
+        const remote = await lookupInviteCloud(joinCode);
+        if (!remote || !remote.ok || !remote.parentId) {
+          return showAuthError("signup-error", "That household invite code is not valid.");
+        }
+        homeId = remote.parentId;
+      }
       const account = {
         id: "u_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
         role: "parent",
@@ -4747,8 +4760,10 @@ a:focus:not(:focus-visible) { outline: none; }
         passwordHash: hash,
         salt,
         parentRole,
+        householdId: homeId || null,
         createdAt: new Date().toISOString(),
       };
+      if (!account.householdId) account.householdId = account.id;
       const list = loadAccounts();
       list.push(account);
       saveAccounts(list);
@@ -4772,7 +4787,8 @@ a:focus:not(:focus-visible) { outline: none; }
           onboarded: true,
           accountRole: "parent",
           village: [],
-          inviteCode: generateInviteCode(),
+          inviteCode: joinCode || generateInviteCode(),
+          householdId: account.householdId,
           trackingEnabled,
           limbUpdateMode,
           childAddress,
@@ -4781,9 +4797,30 @@ a:focus:not(:focus-visible) { outline: none; }
           notifySms: true,
         },
       });
-      writeHouseholdFor(account.id, { trackingEnabled, limbUpdateMode });
+      writeHouseholdFor(account.householdId, { trackingEnabled, limbUpdateMode });
       rememberContact(email || phone);
       const cloud = await cloudSignup(account, password);
+      if (joinCode) {
+        try {
+          const joined = await fetch("/api/account", {
+            method: "POST",
+            headers: cloudHeaders(),
+            body: JSON.stringify({ action: "parent-join", inviteCode: joinCode }),
+          }).then((r) => r.json());
+          if (joined && joined.ok) {
+            if (joined.shared) applySharedCare(joined.shared);
+            if (Array.isArray(joined.village)) profile.village = joined.village;
+            if (Array.isArray(joined.children) && joined.children.length) {
+              profile.children = joined.children;
+              syncActiveChildToLegacy();
+            }
+            profile.inviteCode = joinCode;
+            profile.householdId = joined.householdId || homeId;
+            saveProfile();
+            saveAppData();
+          }
+        } catch (e) {}
+      }
       await registerInviteCloud(profile.inviteCode, loadHousehold());
       await pushVault();
       sendWelcomeNotify({ email, phone, name: firstName, role: "parent", alreadySent: !!(cloud && cloud.welcomed) });
@@ -5091,7 +5128,7 @@ a:focus:not(:focus-visible) { outline: none; }
   function wireAccountAuth() {
     $("#btn-create-parent")?.addEventListener("click", () => {
       showAuthError("signup-error", "");
-      ["su-first","su-last","su-email","su-phone","su-password","su-password2","su-child-name","su-birthday","su-zip"].forEach((id) => {
+      ["su-first","su-last","su-email","su-phone","su-password","su-password2","su-child-name","su-birthday","su-zip","su-join-code"].forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.value = "";
       });
@@ -5783,7 +5820,7 @@ a:focus:not(:focus-visible) { outline: none; }
         passwordHash: hashed.hash,
         salt: hashed.salt,
         parentRole: user.role === "limb" ? "limb" : (user.parentRole === "dad" ? "dad" : "mom"),
-        householdId: user.householdId || null,
+        householdId: user.householdId || existing && existing.householdId || (user.role === "limb" ? null : user.id),
         createdAt: user.createdAt || new Date().toISOString(),
       };
       list.push(account);
@@ -5793,7 +5830,7 @@ a:focus:not(:focus-visible) { outline: none; }
       account.email = user.email || account.email;
       account.phone = user.phone || account.phone;
       account.role = user.role || account.role;
-      account.householdId = user.householdId || account.householdId;
+      account.householdId = user.householdId || account.householdId || (account.role === "limb" ? account.householdId : account.id);
       if (user.parentRole === "dad" || user.parentRole === "mom") account.parentRole = user.parentRole;
       if (password && (!account.passwordHash || !account.salt)) {
         const hashed = await hashPassword(password);
@@ -5887,7 +5924,12 @@ a:focus:not(:focus-visible) { outline: none; }
         dismissedUrgentIds: Array.from(typeof dismissedUrgentIds !== "undefined" ? dismissedUrgentIds : []),
         themeId,
       },
-      household: typeof loadHousehold === "function" ? loadHousehold() : null,
+      household: typeof loadHousehold === "function" ? (function () {
+        const h = loadHousehold();
+        h.shared = sharedCarePayload();
+        return h;
+      })() : null,
+      shared: typeof sharedCarePayload === "function" ? sharedCarePayload() : null,
       inbox: typeof parentInbox !== "undefined" ? parentInbox : [],
     };
   }
@@ -5906,21 +5948,26 @@ a:focus:not(:focus-visible) { outline: none; }
         body: JSON.stringify({ action: "get", accountId: currentAccount.id }),
       });
       const data = await res.json();
-      if (!data || !data.ok || !data.vault) return;
-      const v = data.vault;
+      if (!data || !data.ok) return;
+      const v = data.vault || {};
+      const shared = data.shared || (data.household && data.household.shared) || (v.household && v.household.shared) || null;
       const localAt = profile && profile.updatedAt ? Date.parse(profile.updatedAt) : 0;
       const remoteAt = v.updatedAt ? Date.parse(v.updatedAt) : 0;
       const localHasCare = (typeof logs !== "undefined" && logs.length) || (profile && profile.onboarded && profile.childName);
-      if (localHasCare && localAt && remoteAt && remoteAt < localAt) return;
       cloudApplying = true;
-      if (v.profile) {
-        profile = Object.assign(profile, v.profile);
-        if (currentAccount && currentAccount.role !== "limb") profile.onboarded = true;
-        if (currentAccount && currentAccount.firstName && !profile.userName) profile.userName = currentAccount.firstName;
-      }
-      if (v.appData && typeof applyAppData === "function") applyAppData(v.appData);
-      if (v.household && householdId()) {
+      if (data.household && householdId()) {
+        try { localStorage.setItem("mh_household_" + householdId(), JSON.stringify(data.household)); } catch (e) {}
+      } else if (v.household && householdId()) {
         try { localStorage.setItem("mh_household_" + householdId(), JSON.stringify(v.household)); } catch (e) {}
+      }
+      if (shared) applySharedCare(shared);
+      if (!(localHasCare && localAt && remoteAt && remoteAt < localAt)) {
+        if (v.profile) {
+          profile = Object.assign(profile, v.profile);
+          if (currentAccount && currentAccount.role !== "limb") profile.onboarded = true;
+          if (currentAccount && currentAccount.firstName && !profile.userName) profile.userName = currentAccount.firstName;
+        }
+        if (v.appData && typeof applyAppData === "function" && !shared) applyAppData(v.appData);
       }
       if (Array.isArray(v.inbox)) parentInbox = v.inbox;
       try { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); } catch (e) {}
@@ -6200,9 +6247,8 @@ a:focus:not(:focus-visible) { outline: none; }
   }
 
   function householdId() {
-    if (currentAccount && currentAccount.role === "limb") return currentAccount.householdId || profile.householdId || null;
-    if (currentAccount && currentAccount.id) return currentAccount.id;
-    return null;
+    if (!currentAccount) return profile.householdId || null;
+    return currentAccount.householdId || profile.householdId || (currentAccount.role === "limb" ? null : currentAccount.id);
   }
   function emptyHousehold() {
     return {
@@ -6214,7 +6260,38 @@ a:focus:not(:focus-visible) { outline: none; }
       accountabilityGraceMins: 20,
       careTasks: [],
       fees: [],
+      members: [],
+      shared: null,
     };
+  }
+  function sharedCarePayload() {
+    return {
+      logs: typeof logs !== "undefined" ? logs : [],
+      appointments: typeof appointments !== "undefined" ? appointments : [],
+      careReminders: typeof careReminders !== "undefined" ? careReminders : [],
+      children: typeof getChildren === "function" ? getChildren() : (profile && profile.children) || [],
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentAccount && currentAccount.id,
+    };
+  }
+  function applySharedCare(shared) {
+    if (!shared || typeof shared !== "object") return;
+    if (Array.isArray(shared.logs)) logs = shared.logs;
+    if (Array.isArray(shared.appointments)) appointments = shared.appointments;
+    if (Array.isArray(shared.careReminders)) careReminders = shared.careReminders;
+    if (Array.isArray(shared.children) && shared.children.length && profile) {
+      profile.children = shared.children;
+      if (typeof syncActiveChildToLegacy === "function") syncActiveChildToLegacy();
+    }
+  }
+  function persistSharedCare() {
+    const h = loadHousehold();
+    const next = sharedCarePayload();
+    const empty = !(next.logs && next.logs.length) && !(next.appointments && next.appointments.length) && !(next.careReminders && next.careReminders.length);
+    const had = h.shared && ((h.shared.logs && h.shared.logs.length) || (h.shared.appointments && h.shared.appointments.length) || (h.shared.careReminders && h.shared.careReminders.length));
+    if (empty && had) return;
+    h.shared = next;
+    saveHousehold(h);
   }
   function normalizeLimbUpdateMode(mode) {
     if (mode === "realtime" || mode === "endshift" || mode === "both" || mode === "none") return mode;
@@ -6875,6 +6952,7 @@ a:focus:not(:focus-visible) { outline: none; }
       };
       localStorage.setItem(appDataKey(), JSON.stringify(payload));
     } catch (e) {}
+    try { persistSharedCare(); } catch (e) {}
     if (typeof scheduleCloudSync === "function") scheduleCloudSync();
   }
   function applyAppData(d) {
@@ -7277,7 +7355,7 @@ a:focus:not(:focus-visible) { outline: none; }
     const code = ensureInviteCode();
     let html = `
       <div class="invite-code-box">
-        <span class="muted">Share this code so a Villager can join</span>
+        <span class="muted">Share this code with a Villager or the other parent so you share tracking, reminders, and the calendar</span>
         <strong id="village-invite-code">${escapeHtml(code)}</strong>
         <button type="button" class="btn-ghost full" id="village-copy-code" style="margin-top:8px">Copy invite code</button>
       </div>`;
@@ -7564,6 +7642,7 @@ a:focus:not(:focus-visible) { outline: none; }
         <p class="field-note" style="margin-top:0">${document.body.classList.contains("is-guest") ? "Preview mode — this device only" : "Signed in as <strong id=\"set-account-name\"></strong>"}</p>
         <p class="field-note" style="margin-top:4px">Email: <strong id="set-account-email"></strong></p>
         <p class="field-note" style="margin-top:4px">Phone: <strong id="set-account-phone"></strong></p>
+        <p class="field-note" style="margin-top:8px">This home shares tracking, reminders, and the calendar with the other parent and Villagers who join with your invite code.</p>
         ${document.body.classList.contains("is-guest") ? '<button type="button" class="btn-primary full" id="set-guest-create" style="margin-top:10px">Create parent account</button>' : ""}
         ${document.body.classList.contains("is-guest") ? "" : `
         <div class="settings-sec">IMM backup</div>
@@ -9213,6 +9292,8 @@ a:focus:not(:focus-visible) { outline: none; }
 
   let parentInbox = [];
   function inboxKey() {
+    const hid = typeof householdId === "function" ? householdId() : null;
+    if (hid) return "mh_inbox_" + hid;
     return currentAccount && currentAccount.id ? "mh_inbox_" + currentAccount.id : "mh_parent_inbox";
   }
   function loadInbox() {
@@ -9700,13 +9781,17 @@ a:focus:not(:focus-visible) { outline: none; }
       if (isLimbRole() && limbCanTrack()) checkMissedCareTasks();
     }, 60000);
     setInterval(() => {
-      if (!isParentAccount()) {
-        closeModal("watch-alert");
-        return;
-      }
-      maybeShowWatchAlert();
-      if (typeof pullVault === "function" && cloudToken) {
-        pullVault().then(() => maybeShowWatchAlert()).catch(() => {});
+      if (cloudToken && currentAccount && typeof pullVault === "function") {
+        pullVault().then(() => {
+          if (isParentAccount()) maybeShowWatchAlert();
+          try {
+            if (typeof renderLogs === "function") renderLogs();
+            if (typeof renderCareReminders === "function") renderCareReminders();
+            if (typeof renderAppointments === "function") renderAppointments();
+          } catch (e) {}
+        }).catch(() => {});
+      } else if (isParentAccount()) {
+        maybeShowWatchAlert();
       }
     }, 12000);
 

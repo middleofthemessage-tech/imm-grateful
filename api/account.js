@@ -6,6 +6,21 @@ function inviteCodeOf(value) {
   return String(value || "").trim().toUpperCase();
 }
 
+function addHouseholdMember(db, hid, user) {
+  if (!hid || !user) return;
+  if (!db.households[hid]) db.households[hid] = {};
+  const h = db.households[hid];
+  if (!Array.isArray(h.members)) h.members = [];
+  if (!h.members.some((m) => m.accountId === user.id)) {
+    h.members.push({
+      accountId: user.id,
+      role: user.role,
+      firstName: user.firstName || "",
+      parentRole: user.parentRole || "",
+    });
+  }
+}
+
 function addLimbToVillage(vault, limb) {
   if (!vault.profile) vault.profile = {};
   if (!Array.isArray(vault.profile.village)) vault.profile.village = [];
@@ -71,9 +86,12 @@ module.exports = async function handler(req, res) {
       return dbx.send(res, 200, { ok: true, token, user: dbx.publicUser(existing), resumed: true, store: dbx.kind() });
     }
     const { hash, salt } = dbx.hashPass(password);
+    const id = body.id || "u_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const role = body.role === "limb" ? "limb" : "parent";
+    const householdId = body.householdId || (role === "limb" ? null : id);
     const user = {
-      id: body.id || "u_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      role: body.role === "limb" ? "limb" : "parent",
+      id,
+      role,
       firstName,
       lastName: String(body.lastName || "").trim(),
       email,
@@ -81,17 +99,18 @@ module.exports = async function handler(req, res) {
       passwordHash: hash,
       salt,
       developer: dbx.isDevPhone(phone),
-      householdId: body.householdId || null,
+      householdId,
       inviteCode: inviteCodeOf(body.inviteCode) || null,
-      parentRole: body.role === "limb" ? "limb" : (body.parentRole === "dad" ? "dad" : "mom"),
+      parentRole: role === "limb" ? "limb" : (body.parentRole === "dad" ? "dad" : "mom"),
       createdAt: new Date().toISOString(),
       lastSeen: new Date().toISOString(),
     };
     db.users.push(user);
-    if (user.role === "parent" && user.inviteCode) {
+    addHouseholdMember(db, householdId || user.id, user);
+    if (user.role === "parent" && user.inviteCode && householdId === user.id) {
       db.invites[user.inviteCode] = {
         parentId: user.id,
-        household: body.household || null,
+        household: body.household || db.households[user.id] || null,
         updatedAt: user.createdAt,
       };
     }
@@ -165,13 +184,16 @@ module.exports = async function handler(req, res) {
     if (!user || user.role === "limb") return dbx.send(res, 403, { ok: false, error: "Parent sign-in required" });
     const code = inviteCodeOf(body.code);
     if (!code) return dbx.send(res, 400, { ok: false, error: "Invite code required" });
+    const hid = user.householdId || user.id;
     user.inviteCode = code;
+    user.householdId = hid;
     db.invites[code] = {
-      parentId: user.id,
-      household: body.household || db.households[user.id] || null,
+      parentId: hid,
+      household: body.household || db.households[hid] || null,
       updatedAt: new Date().toISOString(),
     };
-    if (body.household) db.households[user.id] = body.household;
+    if (body.household) db.households[hid] = Object.assign(db.households[hid] || {}, body.household);
+    addHouseholdMember(db, hid, user);
     await dbx.save(db);
     return dbx.send(res, 200, { ok: true });
   }
@@ -184,6 +206,7 @@ module.exports = async function handler(req, res) {
     if (!inv) return dbx.send(res, 404, { ok: false, error: "That invite code is not valid." });
     user.householdId = inv.parentId;
     user.inviteCode = code;
+    addHouseholdMember(db, inv.parentId, user);
     const vault = db.vaults[inv.parentId] || { profile: { village: [] }, appData: null, household: inv.household, inbox: [] };
     db.vaults[inv.parentId] = addLimbToVillage(vault, {
       id: user.id,
@@ -193,6 +216,30 @@ module.exports = async function handler(req, res) {
     });
     await dbx.save(db);
     return dbx.send(res, 200, { ok: true, parentId: inv.parentId, household: db.households[inv.parentId] || inv.household || null });
+  }
+
+  if (action === "parent-join") {
+    const { user } = await dbx.requireUser(req);
+    if (!user) return dbx.send(res, 401, { ok: false, error: "Sign in required" });
+    if (user.role === "limb") return dbx.send(res, 403, { ok: false, error: "Use Villager join for helper accounts" });
+    const code = inviteCodeOf(body.inviteCode || body.code);
+    const inv = code && db.invites ? db.invites[code] : null;
+    if (!inv) return dbx.send(res, 404, { ok: false, error: "That invite code is not valid." });
+    user.householdId = inv.parentId;
+    user.inviteCode = code;
+    addHouseholdMember(db, inv.parentId, user);
+    await dbx.save(db);
+    const hh = db.households[inv.parentId] || inv.household || null;
+    const homeVault = db.vaults[inv.parentId] || null;
+    return dbx.send(res, 200, {
+      ok: true,
+      parentId: inv.parentId,
+      householdId: inv.parentId,
+      household: hh,
+      shared: hh && hh.shared ? hh.shared : (homeVault && homeVault.appData) || null,
+      village: homeVault && homeVault.profile && homeVault.profile.village,
+      children: homeVault && homeVault.profile && homeVault.profile.children,
+    });
   }
 
   return dbx.send(res, 400, { ok: false, error: "Unknown action" });
