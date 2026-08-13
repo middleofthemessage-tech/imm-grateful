@@ -52,31 +52,46 @@
   --serif: "Fraunces", Georgia, serif;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; }
+html, body {
+  height: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  -webkit-text-size-adjust: 100%;
+}
 body {
   font-family: var(--font);
   color: var(--text);
   background: #e8e4dc;
   -webkit-font-smoothing: antialiased;
   line-height: 1.45;
+  display: flex;
+  flex-direction: column;
 }
 button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
 img { max-width: 100%; display: block; }
 ul { list-style: none; }
-.screen { display: none; min-height: 100dvh; }
-.screen.active { display: flex; flex-direction: column; }
+.screen { display: none; min-height: 0; }
+.screen.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
 
 /* Auth */
 .auth-bg {
   flex: 1;
+  min-height: 0;
   background: var(--launch);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 28px 40px;
+  padding: max(48px, env(safe-area-inset-top)) max(28px, env(safe-area-inset-right)) max(40px, env(safe-area-inset-bottom)) max(28px, env(safe-area-inset-left));
   position: relative;
-  overflow: hidden;
+  overflow: auto;
 }
 .sparkles span {
   position: absolute;
@@ -1171,15 +1186,19 @@ html.theme-dark .loading-dots span {
   background: var(--sage-dark, #E8B89A);
 }
 
-/* ─── Core app chrome (phone column + website frame) ───────── */
+/* ─── Core app chrome (fills the current browser / device) ─── */
 #app {
   width: 100%;
-  max-width: 480px;
-  margin: 0 auto;
-  min-height: 100dvh;
+  max-width: none;
+  margin: 0;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
   position: relative;
   background: var(--cream);
-  box-shadow: 0 0 0 1px rgba(26, 40, 32, 0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .sr-only, .sr {
   position: absolute;
@@ -1207,7 +1226,7 @@ html.theme-dark .loading-dots span {
 .skip-link:focus { top: 12px; }
 
 .desktop-brand {
-  display: none;
+  display: none !important;
 }
 
 /* Auth */
@@ -1335,12 +1354,13 @@ html.theme-dark .loading-dots span {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 12px 14px 10px;
+  padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 10px max(14px, env(safe-area-inset-left));
   background: var(--cream-card);
   border-bottom: 1px solid var(--sage-pale);
   position: sticky;
   top: 0;
   z-index: 25;
+  flex-shrink: 0;
 }
 .header-brand {
   display: flex;
@@ -1392,15 +1412,21 @@ html.theme-dark .loading-dots span {
 }
 #screen-app {
   background: var(--home, #F0DADA);
-  min-height: 100dvh;
+  min-height: 0;
 }
 #main-content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 8px 16px 108px;
+  padding: 8px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left));
   -webkit-overflow-scrolling: touch;
 }
-.tab-panel { display: none; }
+.tab-panel {
+  display: none;
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+}
 .tab-panel.active { display: block; }
 .tab-bar {
   position: sticky;
@@ -1409,8 +1435,9 @@ html.theme-dark .loading-dots span {
   gap: 4px;
   background: var(--cream-card);
   border-top: 1px solid var(--sage-pale);
-  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  padding: 8px max(8px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
   z-index: 25;
+  flex-shrink: 0;
 }
 .tab {
   flex: 1;
@@ -2245,6 +2272,17 @@ textarea { resize: vertical; min-height: 72px; }
   }
   .modal.sheet { border-radius: 24px; max-height: 86dvh; }
 }
+@media (min-width: 640px) {
+  .track-grid { grid-template-columns: repeat(3, 1fr); }
+  .home-chips { max-width: 640px; }
+}
+@media (min-width: 960px) {
+  .track-grid { grid-template-columns: repeat(4, 1fr); }
+  #main-content {
+    padding-left: max(28px, env(safe-area-inset-left));
+    padding-right: max(28px, env(safe-area-inset-right));
+  }
+}
 @media (min-width: 900px) {
   body {
     background:
@@ -2252,56 +2290,7 @@ textarea { resize: vertical; min-height: 72px; }
       radial-gradient(ellipse at 90% 100%, rgba(240, 218, 218, 0.45), transparent 40%),
       #e8e4dc;
   }
-  #app {
-    border-radius: 28px;
-    min-height: calc(100dvh - 48px);
-    max-height: calc(100dvh - 48px);
-    margin: 24px auto;
-    overflow: hidden;
-    box-shadow: 0 24px 80px rgba(26, 40, 32, 0.16);
-    display: flex;
-    flex-direction: column;
-  }
-  #app > .screen { flex: 1; min-height: 0; overflow: auto; }
-  .desktop-brand {
-    display: none;
-  }
-}
-@media (min-width: 1120px) {
-  body {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 72px;
-    padding: 24px 48px;
-  }
-  #app { margin: 0; }
-  .desktop-brand {
-    display: block;
-    max-width: 360px;
-  }
-  .desktop-brand img {
-    width: 100%;
-    border-radius: 24px;
-    box-shadow: 0 16px 48px rgba(26,40,32,0.12);
-    margin-bottom: 18px;
-    background: #FBF6F0;
-  }
-  .desktop-brand p {
-    font-family: var(--serif);
-    font-size: 26px;
-    font-weight: 600;
-    color: var(--text);
-    line-height: 1.25;
-  }
-  .desktop-brand-sub {
-    font-family: var(--font) !important;
-    font-size: 15px !important;
-    font-weight: 600 !important;
-    color: var(--text-lt) !important;
-    margin-top: 8px;
-    line-height: 1.5 !important;
-  }
+  .desktop-brand { display: none !important; }
 }
 
 /* Accessibility + small-screen polish */
@@ -2636,7 +2625,7 @@ a:focus:not(:focus-visible) { outline: none; }
         <div id="tab-track" class="tab-panel">
           <div class="subtabs">
             <button class="subtab active" data-sub="log">Daily Log</button>
-            <button class="subtab" data-sub="milestones">Milestones <span class="badge" id="mile-badge">3/8</span></button>
+            <button class="subtab" data-sub="milestones">Milestones <span class="badge" id="mile-badge">0/8</span></button>
           </div>
 
           <div id="sub-log" class="sub-panel active">
@@ -2730,8 +2719,8 @@ a:focus:not(:focus-visible) { outline: none; }
             <div class="mile-progress">
               <div>
                 <strong>4-month milestones</strong>
-                <p class="muted" id="mile-progress-text">3 of 8 checked</p>
-                <div class="bar"><div class="bar-fill" id="mile-bar" style="width:37.5%"></div></div>
+                <p class="muted" id="mile-progress-text">0 of 8 checked</p>
+                <div class="bar"><div class="bar-fill" id="mile-bar" style="width:0%"></div></div>
               </div>
               <span class="mile-star">✦</span>
             </div>
@@ -4329,11 +4318,17 @@ a:focus:not(:focus-visible) { outline: none; }
   function enterGuestPreview(opts) {
     opts = opts || {};
     currentAccount = null;
-    saveSession("guest");
+    try {
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem("mh_profile_guest");
+      localStorage.removeItem("mh_appdata_guest");
+    } catch (e) {}
     PROFILE_KEY = "mh_profile_guest";
-    profile = loadProfile();
+    profile = defaultProfile();
     profile.accountRole = "parent";
+    profile.onboarded = true;
     document.body.dataset.role = "parent";
+    resetBlankWorkspace();
     setGuestBanner(true);
     const go = () => {
       showScreen("screen-app");
@@ -4361,8 +4356,8 @@ a:focus:not(:focus-visible) { outline: none; }
     const s = loadSession();
     if (!s) return false;
     if (s.accountId === "guest") {
-      enterGuestPreview({ skipLoading: true });
-      return true;
+      clearSession();
+      return false;
     }
     const account = findAccountById(s.accountId);
     if (!account) {
@@ -4398,6 +4393,11 @@ a:focus:not(:focus-visible) { outline: none; }
   function wireAccountAuth() {
     $("#btn-create-parent")?.addEventListener("click", () => {
       showAuthError("signup-error", "");
+      ["su-first","su-last","su-email","su-phone","su-password","su-password2","su-child-name","su-birthday","su-zip"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
+      $$("#su-feeding .multi-chip").forEach((c) => c.classList.remove("on"));
       openModal("signup");
     });
     $("#btn-open-signin")?.addEventListener("click", () => {
@@ -5055,6 +5055,24 @@ a:focus:not(:focus-visible) { outline: none; }
     parentInbox = [];
     saveInbox();
     pendingLimbAlerts = [];
+  }
+  function resetBlankWorkspace() {
+    applyAppData(emptyAppData());
+    logs = [];
+    achieved = new Set();
+    appointments = typeof appointments !== "undefined" ? [] : [];
+    careReminders = typeof careReminders !== "undefined" ? [] : [];
+    TASK_LOG = [];
+    if (typeof careEventLogs !== "undefined") careEventLogs = [];
+    dismissedUrgentIds = new Set();
+    parentInbox = [];
+    pendingLimbAlerts = [];
+    const homeGreet = document.querySelector(".home-greeting");
+    if (homeGreet) homeGreet.textContent = "Hello";
+    try { updateVillageUI(); } catch (e) {}
+    try { renderLogs(); } catch (e) {}
+    try { renderMilestones(); } catch (e) {}
+    try { updateMileProgress(); } catch (e) {}
   }
 
 
@@ -5946,14 +5964,7 @@ a:focus:not(:focus-visible) { outline: none; }
       return t >= start && t <= end && tracks.includes(e.category);
     }).sort((a, b) => new Date(a.at) - new Date(b.at));
 
-    // For demo, if filtering emptied list, still show sample mapped to selected kids
-    let useEvents = events;
-    if (!useEvents.length) {
-      useEvents = careEventLogs.filter((e) => tracks.includes(e.category)).map((e) => ({
-        ...e,
-        childId: kids[0].id,
-      }));
-    }
+    const useEvents = events;
 
     const generatedAt = new Date().toISOString();
     let html = `<div class="care-doc">
@@ -5990,15 +6001,14 @@ a:focus:not(:focus-visible) { outline: none; }
 
     if (tracks.includes("growth")) {
       html += `<div class="care-doc-section"><h4>Growth track</h4>
-        <div class="care-doc-row"><div class="care-doc-time">—</div><div class="care-doc-main"><strong>Latest snapshot</strong><br>
-        Weight / length / head: track in progressive visits (demo: on target for age)<br>
-        <span style="color:var(--text-pale);font-size:12px">Review at well visits · last check logged in appointments</span></div></div>
+        <div class="care-doc-empty">No growth measurements logged yet</div>
       </div>`;
     }
     if (tracks.includes("milestones")) {
-      const done = MILESTONES.filter((_, i) => i < 3);
+      const done = MILESTONES.filter((m) => achieved.has(m.id));
       html += `<div class="care-doc-section"><h4>Milestones</h4>`;
-      done.forEach((m) => {
+      if (!done.length) html += `<div class="care-doc-empty">No milestones checked yet</div>`;
+      else done.forEach((m) => {
         html += `<div class="care-doc-row"><div class="care-doc-time">✓</div><div class="care-doc-main"><strong>${escapeHtml(m.label)}</strong><br><span style="color:var(--text-pale);font-size:12px">${m.category} · ${m.source}</span></div></div>`;
       });
       html += `</div>`;
@@ -6953,18 +6963,14 @@ a:focus:not(:focus-visible) { outline: none; }
           rec.start();
           return;
         } catch (err) {
-          /* fall through to demo */
+          resetVoiceBtn(btn);
+          toast("Voice logging is not available here — tap a log button instead");
+          return;
         }
       }
 
-      setTimeout(() => {
-        btn.classList.remove("listening");
-        btn.classList.add("success");
-        if (icon) icon.textContent = "✓";
-        if (label) label.textContent = "Logged";
-        parseVoiceLog("dirty diaper");
-        setTimeout(() => resetVoiceBtn(btn), 2200);
-      }, 1600);
+      resetVoiceBtn(btn);
+      toast("Voice logging is not available here — tap a log button instead");
     });
   }
 
@@ -7393,6 +7399,9 @@ a:focus:not(:focus-visible) { outline: none; }
     wireAccountAuth();
     wireAddLimb();
     if (!restoreSessionIfAny()) {
+      PROFILE_KEY = "mh_profile_v1";
+      profile = defaultProfile();
+      resetBlankWorkspace();
       showScreen("screen-auth");
     }
 
