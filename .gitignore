@@ -9,3 +9,6 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# Local cloud store (do not commit private user data)
+data/store.json

@@ -817,6 +817,19 @@ body.role-limb .tab[data-tab="track"] { display: flex !important; }
   border-bottom: 1px solid var(--sage-pale);
 }
 .acct-fee-row:last-child { border-bottom: none; }
+.dev-pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  line-height: 1.4;
+  background: var(--cream);
+  border-radius: 12px;
+  padding: 12px;
+  max-height: 360px;
+  overflow: auto;
+}
+body:not(.is-developer) #tab-btn-dev,
+body:not(.is-developer) #tab-dev { display: none !important; }
 
 /* Font themes */
 
@@ -2926,6 +2939,37 @@ a:focus:not(:focus-visible) { outline: none; }
           <div class="feed" id="feed-list"></div>
         </div>
 
+        <!-- DEVELOPER -->
+        <div id="tab-dev" class="tab-panel">
+          <div class="updates-hero">
+            <p class="updates-small">Owner only · live</p>
+            <h2>Developer</h2>
+            <p class="page-sub">You signed in like a parent. This tab is only for your number. Other parents never see it.</p>
+          </div>
+          <div class="home-chips" id="dev-counts"></div>
+          <p class="field-note" id="dev-store-note">Connecting live store…</p>
+          <section class="card">
+            <div class="card-head"><h3>Share the app</h3></div>
+            <p class="field-note" style="margin-top:0">Send people this link. They create their own parent account. Their info stays in a locked vault — only they can open it, and you can review it here.</p>
+            <p class="invite-code-box" style="margin-top:8px"><strong id="dev-share-url">https://imm-grateful.vercel.app/</strong></p>
+            <button type="button" class="btn-primary full" id="dev-copy-link" style="margin-top:10px">Copy live link</button>
+            <button type="button" class="btn-ghost full" id="dev-refresh" style="margin-top:8px">Refresh now</button>
+          </section>
+          <section class="card">
+            <div class="card-head"><h3>Live activity</h3><span class="muted" id="dev-live-at">Waiting…</span></div>
+            <ul class="log-list" id="dev-events"></ul>
+          </section>
+          <section class="card">
+            <div class="card-head"><h3>People</h3><span class="muted">Tap a row to review their saved care data</span></div>
+            <div id="dev-users"></div>
+          </section>
+          <section class="card" id="dev-peek" hidden>
+            <div class="card-head"><h3 id="dev-peek-title">Snapshot</h3>
+              <button type="button" class="btn-ghost" id="dev-peek-close">Close</button></div>
+            <pre id="dev-peek-body" class="dev-pre"></pre>
+          </section>
+        </div>
+
         <!-- REMINDER OF ME -->
         <div id="tab-reminder" class="tab-panel">
           <div class="reminder-hero">
@@ -2948,6 +2992,7 @@ a:focus:not(:focus-visible) { outline: none; }
         <button class="tab" data-tab="track"><span class="ti">◎</span><span>Track</span></button>
         <button class="tab" data-tab="updates"><span class="ti">✦</span><span>Updates</span></button>
         <button class="tab parent-only" data-tab="reminder"><span class="ti">♡</span><span>Me</span></button>
+        <button class="tab" data-tab="dev" id="tab-btn-dev" hidden><span class="ti">▣</span><span>Dev</span></button>
       </nav>
     </section>
 
@@ -4333,6 +4378,11 @@ a:focus:not(:focus-visible) { outline: none; }
   }
   function clearSession() {
     try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+    try {
+      sessionStorage.removeItem("mh_cloud_token");
+      localStorage.removeItem("mh_cloud_token");
+    } catch (e) {}
+    cloudToken = "";
     currentAccount = null;
   }
   function normalizeEmail(email) {
@@ -4501,6 +4551,8 @@ a:focus:not(:focus-visible) { outline: none; }
       showScreen("screen-app");
       applyRoleUI();
       applyTrackingVisibility();
+      applyDeveloperUI();
+      pullVault();
       updateHomeDateLine();
       const greet = profile.userName || account.firstName || "friend";
       toast("Welcome" + (greet ? ", " + greet : ""));
@@ -4604,6 +4656,9 @@ a:focus:not(:focus-visible) { outline: none; }
         },
       });
       writeHouseholdFor(account.id, { trackingEnabled, limbUpdateMode });
+      await cloudSignup(account, password);
+      await registerInviteCloud(profile.inviteCode, loadHousehold());
+      await pushVault();
       sendWelcomeNotify({ email, phone, name: firstName, role: "parent" });
       // register invite for limb joins
       try {
@@ -4625,13 +4680,21 @@ a:focus:not(:focus-visible) { outline: none; }
     const password = $("#si-password")?.value || "";
     if (!contact) return showAuthError("signin-error", "Enter your email or phone number.");
     if (!password) return showAuthError("signin-error", "Enter your password.");
-    const account = findAccountByContact(contact);
-    if (!account) return showAuthError("signin-error", "No account found for that email or phone.");
     const btn = $("#si-submit");
     if (btn) { btn.disabled = true; btn.textContent = "Signing in…"; }
     try {
-      const ok = await verifyPassword(password, account);
-      if (!ok) return showAuthError("signin-error", "Incorrect password.");
+      let account = findAccountByContact(contact);
+      let cloud = await cloudSignin(contact, password);
+      if (cloud && cloud.ok && cloud.user) {
+        account = upsertLocalFromCloud(cloud.user, password, account);
+      } else if (account) {
+        const ok = await verifyPassword(password, account);
+        if (!ok) return showAuthError("signin-error", "Incorrect password.");
+        cloud = await cloudSignup(account, password);
+        if (cloud && cloud.ok && cloud.user) account = upsertLocalFromCloud(cloud.user, password, account);
+      } else {
+        return showAuthError("signin-error", (cloud && cloud.error) || "No account found for that email or phone.");
+      }
       closeModal("signin");
       enterAppAs(account);
     } catch (err) {
@@ -4650,7 +4713,19 @@ a:focus:not(:focus-visible) { outline: none; }
     const phone = normalizePhone(phoneRaw);
     const password = $("#limb-password")?.value || "";
     if (!code) return showAuthError("limb-error", "Enter the invite code from the parent.");
-    const parentId = findParentIdByInviteCode(code);
+    let parentId = findParentIdByInviteCode(code);
+    if (!parentId) {
+      const remote = await lookupInviteCloud(code);
+      if (remote && remote.ok && remote.parentId) {
+        parentId = remote.parentId;
+        try {
+          const map = JSON.parse(localStorage.getItem("mh_invite_map_v1") || "{}");
+          map[code] = parentId;
+          localStorage.setItem("mh_invite_map_v1", JSON.stringify(map));
+        } catch (e) {}
+        if (remote.household) writeHouseholdFor(parentId, remote.household);
+      }
+    }
     if (!parentId) return showAuthError("limb-error", "That invite code is not valid. Ask the parent for the code from their Village screen.");
     try {
       const rawH = localStorage.getItem("mh_household_" + parentId);
@@ -4746,6 +4821,13 @@ a:focus:not(:focus-visible) { outline: none; }
           householdId: parentId,
         },
       });
+      await cloudSignup(account, password);
+      await fetch("/api/account", {
+        method: "POST",
+        headers: cloudHeaders(),
+        body: JSON.stringify({ action: "limb-join", inviteCode: code }),
+      }).catch(() => {});
+      await pushVault();
       sendWelcomeNotify({ email, phone, name: firstName, role: "limb" });
       toast("You’re in as Limb · " + firstName);
     } catch (err) {
@@ -4757,12 +4839,15 @@ a:focus:not(:focus-visible) { outline: none; }
   }
   function signOutAccount() {
     clearSession();
+    stopDevPoll();
     PROFILE_KEY = "mh_profile_v1";
     profile = defaultProfile();
     document.body.dataset.role = "";
-    document.body.classList.remove("is-guest");
+    document.body.classList.remove("is-guest", "is-developer");
     const guestBan = document.getElementById("guest-banner");
     if (guestBan) guestBan.hidden = true;
+    const btn = $("#tab-btn-dev");
+    if (btn) btn.hidden = true;
     showScreen("screen-auth");
     toast("Signed out");
   }
@@ -4825,12 +4910,15 @@ a:focus:not(:focus-visible) { outline: none; }
     profile = loadProfile();
     applyAccountToProfile(account);
     document.body.dataset.role = account.role === "limb" ? "limb" : "parent";
+    try { cloudToken = localStorage.getItem("mh_cloud_token") || sessionStorage.getItem("mh_cloud_token") || ""; } catch (e) {}
     applyAppData(loadAppData());
     loadInbox();
     showLoadingThen(() => {
       showScreen("screen-app");
       applyRoleUI();
       applyTrackingVisibility();
+      applyDeveloperUI();
+      pullVault();
       updateHomeDateLine();
       const greet = profile.userName || account.firstName || "";
       const homeGreet = document.querySelector(".home-greeting");
@@ -5436,9 +5524,320 @@ a:focus:not(:focus-visible) { outline: none; }
 
   function saveProfile() {
     try {
+      profile.updatedAt = new Date().toISOString();
       localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     } catch (e) {}
     try { if (typeof saveAppData === "function") saveAppData(); } catch (e) {}
+    scheduleCloudSync();
+  }
+
+  const DEV_PHONE = "7703168593";
+  let cloudToken = "";
+  let cloudSyncTimer = null;
+  let devPollTimer = null;
+  let cloudApplying = false;
+
+  function isDeveloperAccount(account) {
+    const a = account || currentAccount;
+    if (a && a.developer) return true;
+    const phone = normalizePhone((a && a.phone) || (profile && profile.phone) || "");
+    return phone.slice(-10) === DEV_PHONE;
+  }
+  function rememberCloudToken(token) {
+    cloudToken = token || "";
+    try {
+      if (cloudToken) {
+        localStorage.setItem("mh_cloud_token", cloudToken);
+        sessionStorage.setItem("mh_cloud_token", cloudToken);
+      } else {
+        localStorage.removeItem("mh_cloud_token");
+        sessionStorage.removeItem("mh_cloud_token");
+      }
+    } catch (e) {}
+  }
+  function applyDeveloperUI() {
+    const on = !!(currentAccount && isDeveloperAccount(currentAccount));
+    document.body.classList.toggle("is-developer", on);
+    const btn = $("#tab-btn-dev");
+    if (btn) btn.hidden = !on;
+    if (on) startDevPoll();
+    else stopDevPoll();
+  }
+  function cloudHeaders() {
+    const h = { "Content-Type": "application/json" };
+    if (cloudToken) h.Authorization = "Bearer " + cloudToken;
+    return h;
+  }
+  async function upsertLocalFromCloud(user, password, existing) {
+    const list = loadAccounts();
+    let account = existing || list.find((a) => a.id === user.id || a.email === user.email || normalizePhone(a.phone) === normalizePhone(user.phone));
+    if (!account) {
+      const hashed = password ? await hashPassword(password) : { hash: "", salt: "" };
+      account = {
+        id: user.id,
+        role: user.role === "limb" ? "limb" : "parent",
+        firstName: user.firstName,
+        lastName: user.lastName || "",
+        email: user.email,
+        phone: user.phone,
+        phoneDisplay: formatPhoneDisplay(user.phone),
+        passwordHash: hashed.hash,
+        salt: hashed.salt,
+        parentRole: user.role === "limb" ? "limb" : "mom",
+        householdId: user.householdId || null,
+        createdAt: user.createdAt || new Date().toISOString(),
+      };
+      list.push(account);
+    } else {
+      account.firstName = user.firstName || account.firstName;
+      account.lastName = user.lastName || account.lastName;
+      account.email = user.email || account.email;
+      account.phone = user.phone || account.phone;
+      account.role = user.role || account.role;
+      account.householdId = user.householdId || account.householdId;
+      if (password && (!account.passwordHash || !account.salt)) {
+        const hashed = await hashPassword(password);
+        account.passwordHash = hashed.hash;
+        account.salt = hashed.salt;
+      }
+    }
+    account.developer = !!user.developer || isDeveloperAccount(account);
+    const ix = list.findIndex((a) => a.id === account.id);
+    if (ix >= 0) list[ix] = account;
+    else list.push(account);
+    saveAccounts(list);
+    return account;
+  }
+  async function cloudSignup(account, password) {
+    try {
+      const res = await fetch("/api/account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "signup",
+          id: account.id,
+          role: account.role,
+          firstName: account.firstName,
+          lastName: account.lastName || "",
+          email: account.email,
+          phone: account.phone,
+          password,
+          householdId: account.householdId || null,
+          inviteCode: (account.inviteCode || (profile && profile.inviteCode) || ""),
+          household: typeof loadHousehold === "function" ? loadHousehold() : null,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data && data.ok && data.token) {
+        rememberCloudToken(data.token);
+        if (data.user && data.user.developer) account.developer = true;
+      }
+      trackCloud("signup", account.role === "limb" ? "Limb joined" : "Parent signed up");
+      return data;
+    } catch (e) { return { ok: false }; }
+  }
+  async function cloudSignin(contact, password) {
+    try {
+      const res = await fetch("/api/account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "signin", contact, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data && data.ok && data.token) rememberCloudToken(data.token);
+      if (data && data.ok) trackCloud("login", "Signed in");
+      return data;
+    } catch (e) { return { ok: false }; }
+  }
+  async function lookupInviteCloud(code) {
+    try {
+      const res = await fetch("/api/account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "invite-lookup", code }),
+      });
+      return await res.json();
+    } catch (e) { return { ok: false }; }
+  }
+  async function registerInviteCloud(code, household) {
+    if (!cloudToken || !code) return;
+    try {
+      await fetch("/api/account", {
+        method: "POST",
+        headers: cloudHeaders(),
+        body: JSON.stringify({ action: "invite-register", code, household: household || null }),
+      });
+    } catch (e) {}
+  }
+  function collectVault() {
+    return {
+      action: "put",
+      accountId: currentAccount && currentAccount.id,
+      inviteCode: (currentAccount && currentAccount.inviteCode) || (profile && profile.inviteCode) || "",
+      profile,
+      appData: {
+        logs,
+        achieved: Array.from(achieved || []),
+        appointments: typeof appointments !== "undefined" ? appointments : [],
+        careReminders: typeof careReminders !== "undefined" ? careReminders : [],
+        taskLog: typeof TASK_LOG !== "undefined" ? TASK_LOG : [],
+        careEventLogs: typeof careEventLogs !== "undefined" ? careEventLogs : [],
+        dismissedUrgentIds: Array.from(typeof dismissedUrgentIds !== "undefined" ? dismissedUrgentIds : []),
+        themeId,
+      },
+      household: typeof loadHousehold === "function" ? loadHousehold() : null,
+      inbox: typeof parentInbox !== "undefined" ? parentInbox : [],
+    };
+  }
+  async function pushVault() {
+    if (!cloudToken || !currentAccount || cloudApplying) return;
+    try {
+      await fetch("/api/vault", { method: "POST", headers: cloudHeaders(), body: JSON.stringify(collectVault()) });
+    } catch (e) {}
+  }
+  async function pullVault() {
+    if (!cloudToken || !currentAccount) return;
+    try {
+      const res = await fetch("/api/vault", {
+        method: "POST",
+        headers: cloudHeaders(),
+        body: JSON.stringify({ action: "get", accountId: currentAccount.id }),
+      });
+      const data = await res.json();
+      if (!data || !data.ok || !data.vault) return;
+      const v = data.vault;
+      const localAt = profile && profile.updatedAt ? Date.parse(profile.updatedAt) : 0;
+      const remoteAt = v.updatedAt ? Date.parse(v.updatedAt) : 0;
+      const localHasCare = (typeof logs !== "undefined" && logs.length) || (profile && profile.onboarded && profile.childName);
+      if (localHasCare && localAt && remoteAt && remoteAt < localAt) return;
+      cloudApplying = true;
+      if (v.profile) profile = Object.assign(profile, v.profile);
+      if (v.appData && typeof applyAppData === "function") applyAppData(v.appData);
+      if (v.household && householdId()) {
+        try { localStorage.setItem("mh_household_" + householdId(), JSON.stringify(v.household)); } catch (e) {}
+      }
+      if (Array.isArray(v.inbox)) parentInbox = v.inbox;
+      try { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); } catch (e) {}
+      if (typeof saveAppData === "function") saveAppData();
+      if (typeof saveInbox === "function") {
+        try { localStorage.setItem(inboxKey(), JSON.stringify(parentInbox)); } catch (e) {}
+      }
+      try {
+        renderLogs();
+        renderMilestones();
+        updateVillageUI();
+        if (typeof renderCareReminders === "function") renderCareReminders();
+        if (typeof renderAppointments === "function") renderAppointments();
+      } catch (e) {}
+    } catch (e) {}
+    cloudApplying = false;
+  }
+  function scheduleCloudSync() {
+    if (!cloudToken || cloudApplying) return;
+    clearTimeout(cloudSyncTimer);
+    cloudSyncTimer = setTimeout(pushVault, 800);
+  }
+  function trackCloud(type, label) {
+    const payload = {
+      type,
+      label: label || "",
+      accountId: currentAccount && currentAccount.id,
+      role: (currentAccount && currentAccount.role) || document.body.dataset.role || "",
+    };
+    fetch("/api/analytics", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).catch(() => {});
+  }
+  async function refreshDevDashboard() {
+    if (!isDeveloperAccount(currentAccount)) return;
+    const note = $("#dev-store-note");
+    if (!cloudToken) {
+      if (note) note.textContent = "Sign out and sign back in once so live analytics can connect.";
+      return;
+    }
+    try {
+      const res = await fetch("/api/analytics", { headers: cloudHeaders() });
+      const data = await res.json();
+      if (!data || !data.ok) {
+        if (note) note.textContent = "Could not load live analytics. Sign out and sign back in.";
+        return;
+      }
+      const c = data.counts || {};
+      const chips = $("#dev-counts");
+      if (chips) {
+        chips.innerHTML = [
+          ["People", c.users || 0],
+          ["Parents", c.parents || 0],
+          ["Limbs", c.limbs || 0],
+          ["Signups today", c.signupsToday || 0],
+          ["Clock-ins", c.clockins || 0],
+          ["Events today", c.eventsToday || 0],
+        ].map(([k, v]) => `<div class="chip"><span>${k}</span><strong>${v}</strong></div>`).join("");
+      }
+      if (note) {
+        note.textContent = data.store === "upstash"
+          ? "Protected cloud store is on. Only each parent and you can open a vault."
+          : "Accounts are locked to the owner. Add Vercel KV (Upstash) so data survives deploys — see README.";
+      }
+      const at = $("#dev-live-at");
+      if (at) at.textContent = "Updated " + new Date().toLocaleTimeString();
+      const ev = $("#dev-events");
+      if (ev) {
+        ev.innerHTML = (data.events || []).slice(0, 20).map((e) =>
+          `<li><span class="log-dot"></span><div><div class="log-label">${escapeHtml(e.type)}</div><div class="log-meta">${escapeHtml(e.label || "")} · ${escapeHtml((e.at || "").replace("T", " ").slice(0, 16))}</div></div></li>`
+        ).join("") || '<li class="log-empty">No live events yet</li>';
+      }
+      const people = $("#dev-users");
+      if (people) {
+        people.innerHTML = (data.users || []).map((u) =>
+          `<button type="button" class="inbox-item" data-uid="${escapeHtml(u.id)}">
+            <div class="inbox-title">${escapeHtml(u.firstName || "User")} · ${escapeHtml(u.role || "")}${u.developer ? " · you" : ""}</div>
+            <div class="inbox-preview">${escapeHtml(u.email || "")} · ••••${escapeHtml(u.phoneLast4 || "")} · last ${escapeHtml((u.lastSeen || "").replace("T", " ").slice(0, 16) || "—")}</div>
+          </button>`
+        ).join("") || '<p class="field-note">No cloud accounts yet.</p>';
+        $$("#dev-users [data-uid]").forEach((btn) => {
+          btn.addEventListener("click", () => peekUserVault(btn.dataset.uid));
+        });
+      }
+    } catch (e) {
+      if (note) note.textContent = "Live store is waking up. Try Refresh now.";
+    }
+  }
+  async function peekUserVault(id) {
+    const box = $("#dev-peek");
+    const body = $("#dev-peek-body");
+    const title = $("#dev-peek-title");
+    if (!box || !body) return;
+    try {
+      const res = await fetch("/api/vault", {
+        method: "POST",
+        headers: cloudHeaders(),
+        body: JSON.stringify({ action: "get", accountId: id }),
+      });
+      const data = await res.json();
+      box.hidden = false;
+      if (title) title.textContent = (data.user && data.user.firstName ? data.user.firstName : "User") + " snapshot";
+      const v = data.vault || {};
+      const safe = {
+        user: data.user,
+        child: v.profile ? { name: v.profile.childName, birthday: v.profile.birthday, address: v.profile.childAddress } : null,
+        logs: (v.appData && v.appData.logs) || [],
+        reminders: (v.appData && v.appData.careReminders) || [],
+        appointments: (v.appData && v.appData.appointments) || [],
+        village: v.profile && v.profile.village,
+        updatedAt: v.updatedAt,
+      };
+      body.textContent = JSON.stringify(safe, null, 2);
+    } catch (e) {
+      body.textContent = "Could not load snapshot.";
+    }
+  }
+  function startDevPoll() {
+    stopDevPoll();
+    refreshDevDashboard();
+    devPollTimer = setInterval(refreshDevDashboard, 8000);
+  }
+  function stopDevPoll() {
+    if (devPollTimer) clearInterval(devPollTimer);
+    devPollTimer = null;
   }
 
   function childAgeMonths(birthday) {
@@ -5531,6 +5930,7 @@ a:focus:not(:focus-visible) { outline: none; }
     const id = householdId();
     if (!id) return;
     try { localStorage.setItem("mh_household_" + id, JSON.stringify(h)); } catch (e) {}
+    if (typeof scheduleCloudSync === "function") scheduleCloudSync();
   }
   function writeHouseholdFor(parentId, patch) {
     if (!parentId) return;
@@ -6094,6 +6494,7 @@ a:focus:not(:focus-visible) { outline: none; }
       };
       localStorage.setItem(appDataKey(), JSON.stringify(payload));
     } catch (e) {}
+    if (typeof scheduleCloudSync === "function") scheduleCloudSync();
   }
   function applyAppData(d) {
     d = d || emptyAppData();
@@ -6192,6 +6593,8 @@ a:focus:not(:focus-visible) { outline: none; }
     const btn = $(`.tab[data-tab="${name}"]`);
     if (btn) btn.classList.add("active");
     if (name === "track") applyClockGate();
+    if (name === "dev") refreshDevDashboard();
+    if (name === "track") trackCloud("track", "Opened Track");
   }
 
   function openModal(name) {
@@ -8267,6 +8670,7 @@ a:focus:not(:focus-visible) { outline: none; }
   }
   function saveInbox() {
     try { localStorage.setItem(inboxKey(), JSON.stringify(parentInbox)); } catch (e) {}
+    if (typeof scheduleCloudSync === "function") scheduleCloudSync();
   }
 
   let careRange = "today";
@@ -8656,6 +9060,8 @@ a:focus:not(:focus-visible) { outline: none; }
     applyReadability();
     applyMilestonesVisibility();
     applyTrackingVisibility();
+    try { cloudToken = localStorage.getItem("mh_cloud_token") || sessionStorage.getItem("mh_cloud_token") || cloudToken; } catch (e) {}
+    applyDeveloperUI();
     updateHomeDateLine();
     wireOnboarding();
     wirePumpTip();
@@ -8681,17 +9087,31 @@ a:focus:not(:focus-visible) { outline: none; }
       t.addEventListener("click", () => showTab(t.dataset.tab));
     });
     $("#go-track")?.addEventListener("click", () => showTab("track"));
-    $("#btn-clock-in")?.addEventListener("click", clockInShift);
+    $("#dev-peek-close")?.addEventListener("click", () => { const p = $("#dev-peek"); if (p) p.hidden = true; });
+    $("#dev-refresh")?.addEventListener("click", () => refreshDevDashboard());
+    $("#dev-copy-link")?.addEventListener("click", async () => {
+      const url = "https://imm-grateful.vercel.app/";
+      try { await navigator.clipboard.writeText(url); toast("Live link copied"); }
+      catch (e) { toast(url); }
+    });
+    $("#btn-clock-in")?.addEventListener("click", () => { clockInShift(); trackCloud("clockin", "Clocked in"); });
     $("#btn-clock-out")?.addEventListener("click", clockOutShift);
     $("#btn-acct")?.addEventListener("click", openAcctModal);
     $("#rem-acct-toggle")?.addEventListener("click", () => $("#rem-acct-toggle").classList.toggle("on"));
     $("#alert-acct-toggle")?.addEventListener("click", () => $("#alert-acct-toggle").classList.toggle("on"));
     $("#limb-acct-agree")?.addEventListener("click", () => $("#limb-acct-agree").classList.toggle("on"));
-    $("#limb-invite-code")?.addEventListener("change", () => {
+    $("#limb-invite-code")?.addEventListener("change", async () => {
       const code = ($("#limb-invite-code").value || "").trim().toUpperCase();
-      const pid = findParentIdByInviteCode(code);
+      let pid = findParentIdByInviteCode(code);
       const box = $("#limb-acct-consent");
       if (!box) return;
+      if (!pid) {
+        const remote = await lookupInviteCloud(code);
+        if (remote && remote.ok) {
+          pid = remote.parentId;
+          if (remote.household && remote.household.accountabilityFee) { box.hidden = false; return; }
+        }
+      }
       if (!pid) { box.hidden = true; return; }
       try {
         const raw = localStorage.getItem("mh_household_" + pid);
