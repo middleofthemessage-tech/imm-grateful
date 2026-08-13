@@ -1,0 +1,11 @@
+# Local deploy / tool state
+.netlify/
+.vercel/
+.DS_Store
+Thumbs.db
+*.log
+
+# Secrets and local env
+.env
+.env.*
+!.env.example

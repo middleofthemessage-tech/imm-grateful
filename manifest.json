@@ -1,0 +1,26 @@
+{
+  "name": "In the Middle of the [Mess]age",
+  "short_name": "[Mess]age",
+  "description": "A break for your brain — care tracking, village, and safety for the messy middle of parenting.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#7A9E8A",
+  "theme_color": "#7A9E8A",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "logo-main.jpg",
+      "sizes": "1024x1024",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}

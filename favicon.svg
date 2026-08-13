@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="In the Middle of the [Mess]age">
+  <rect width="64" height="64" rx="14" fill="#FBF6F0"/>
+  <circle cx="32" cy="26" r="9" fill="#7A9E8A"/>
+  <circle cx="22" cy="30" r="6" fill="#B07A7A"/>
+  <circle cx="42" cy="30" r="6" fill="#8A7AAA"/>
+  <circle cx="26" cy="20" r="5" fill="#D4A030"/>
+  <circle cx="38" cy="20" r="5" fill="#2D6B7A"/>
+  <circle cx="32" cy="26" r="3.2" fill="#FBF6F0"/>
+  <text x="32" y="54" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="11" fill="#1A2820">[M]</text>
+</svg>
