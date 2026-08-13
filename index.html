@@ -2304,6 +2304,86 @@ textarea { resize: vertical; min-height: 72px; }
   }
 }
 
+/* Accessibility + small-screen polish */
+:focus-visible {
+  outline: 2.5px solid var(--sage-dark);
+  outline-offset: 2px;
+}
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible) { outline: none; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.app-header { flex-wrap: wrap; }
+.header-actions { flex-wrap: wrap; justify-content: flex-end; max-width: 100%; }
+@media (max-width: 420px) {
+  .header-wordmark { display: none; }
+  .header-btn .btn-label { display: none; }
+  .header-btn.village-chip { padding: 6px 8px; }
+  .corner-mark { width: 44px; height: 44px; bottom: 78px; }
+}
+
+.auth-card-icon.guest {
+  background: #FFF3E0;
+  color: #8A5A00;
+}
+
+.guest-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #FFF3E0;
+  color: #6A4A18;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  border-bottom: 1px solid #F0D8B0;
+}
+.guest-banner[hidden] { display: none !important; }
+.guest-banner button {
+  flex-shrink: 0;
+  background: var(--sage-dark);
+  color: #fff;
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.group-card {
+  background: var(--cream-card);
+  border: 1.5px solid var(--sage-pale);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 10px;
+  text-align: left;
+}
+.group-card h4 { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+.group-card p { font-size: 13px; color: var(--text-lt); line-height: 1.45; }
+.group-card .group-meta {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sage-dark);
+  margin-top: 8px;
+}
+
+.log-empty {
+  text-align: center;
+  color: var(--text-lt);
+  font-size: 14px;
+  padding: 18px 8px;
+  line-height: 1.45;
+  list-style: none;
+}
+
   </style>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -2327,7 +2407,7 @@ textarea { resize: vertical; min-height: 72px; }
           <img src="logo-main.jpg" alt="In the Middle of the [Mess]age" class="auth-logo" />
         </div>
         <p class="auth-tagline">A Break for Your Brain</p>
-                <div class="auth-cards">
+        <div class="auth-cards">
           <button class="auth-card" type="button" id="btn-create-parent" data-role="parent">
             <div class="auth-card-icon">⸙</div>
             <div class="auth-card-text">
@@ -2344,9 +2424,17 @@ textarea { resize: vertical; min-height: 72px; }
             </div>
             <span class="auth-card-arrow">›</span>
           </button>
+          <button class="auth-card" type="button" id="btn-try-app">
+            <div class="auth-card-icon guest">✦</div>
+            <div class="auth-card-text">
+              <strong>Look around first</strong>
+              <span>Preview tracking, village &amp; safety · no account needed</span>
+            </div>
+            <span class="auth-card-arrow">›</span>
+          </button>
         </div>
         <button type="button" class="auth-signin-link" id="btn-open-signin">Already have an account? Sign in</button>
-        <p class="auth-footnote">Parents create the household with email &amp; phone. Limbs join with an invite code.</p>
+        <p class="auth-footnote">Parents create the household with email &amp; phone. Limbs join with an invite code. Preview and account data stay on this device — we don’t send family details to a server.</p>
       </div>
     </section>
 
@@ -2478,16 +2566,20 @@ textarea { resize: vertical; min-height: 72px; }
           <span class="header-wordmark">In the Middle of the <b>[Mess]</b>age</span>
         </div>
         <div class="header-actions">
-          <button class="header-btn" id="btn-calendar" title="Calendar">📅</button>
-          <button class="header-btn parent-only" id="btn-geo" title="Home zone">📍 Zone</button>
-          <button class="header-btn village-chip" id="btn-village">
+          <button class="header-btn" id="btn-calendar" title="Calendar" aria-label="Calendar">📅</button>
+          <button class="header-btn parent-only" id="btn-geo" title="Home zone" aria-label="Home zone">📍 <span class="btn-label">Zone</span></button>
+          <button class="header-btn village-chip" id="btn-village" aria-label="Village">
             <span class="dot"></span> Village
           </button>
-          <button class="header-btn parent-only" id="btn-inbox" title="Care inbox">Inbox <span class="inbox-badge" id="inbox-badge" hidden>0</span></button>
-          <button class="header-btn limb-only" id="btn-care-summary" title="Send care summary" hidden>📝 Summary</button>
-          <button class="header-btn" id="btn-settings" title="Settings">⚙</button>
+          <button class="header-btn parent-only" id="btn-inbox" title="Care inbox" aria-label="Care inbox">Inbox <span class="inbox-badge" id="inbox-badge" hidden>0</span></button>
+          <button class="header-btn limb-only" id="btn-care-summary" title="Send care summary" hidden>📝 <span class="btn-label">Summary</span></button>
+          <button class="header-btn" id="btn-settings" title="Settings" aria-label="Settings">⚙</button>
         </div>
       </header>
+      <div class="guest-banner" id="guest-banner" hidden>
+        <span>Previewing on this device. Create an account to keep your village and logs.</span>
+        <button type="button" id="guest-create">Create account</button>
+      </div>
 
       <main id="main-content">
         <!-- HOME -->
@@ -2515,10 +2607,6 @@ textarea { resize: vertical; min-height: 72px; }
             <span class="eyebrow">Today's tip</span>
             <h3>Tummy Time Tuesday</h3>
             <p>Aim for 3–5 short sessions today — even 2 minutes counts. A rolled towel under baby's chest can help.</p>
-            <div class="tip-play">
-              <span class="play-btn">▶</span>
-              <span>Watch 45 sec video</span>
-            </div>
           </article>
 
           <button class="track-cta" id="go-track">
@@ -2779,6 +2867,24 @@ textarea { resize: vertical; min-height: 72px; }
           <button class="modal-close" data-close="tasks">Done</button>
         </div>
         <div class="modal-body" id="tasks-body"></div>
+      </div>
+    </div>
+
+    <!-- Interests / Reminder of Me groups -->
+    <div class="modal-overlay" id="modal-interests" hidden>
+      <div class="modal sheet">
+        <div class="modal-head">
+          <div>
+            <h2>Your interests</h2>
+            <p class="muted">Pick a few quiet corners that still feel like you</p>
+          </div>
+          <button class="modal-close" type="button" data-close="interests">Done</button>
+        </div>
+        <div class="modal-body">
+          <p class="field-note" style="margin-top:0">These stay on this device. We’ll show matching community groups on Me.</p>
+          <div class="multi-chips" id="interest-chips"></div>
+          <button type="button" class="btn-primary full" id="interests-save" style="margin-top:16px">Save interests</button>
+        </div>
       </div>
     </div>
 
@@ -3176,6 +3282,10 @@ textarea { resize: vertical; min-height: 72px; }
             <button class="date-chip" data-d="yesterday">Yesterday</button>
             <button class="date-chip" data-d="other">Other</button>
           </div>
+          <div id="log-other-wrap" hidden>
+            <label class="field-label" for="log-other-date">Pick a date</label>
+            <input type="date" id="log-other-date" class="text-input" />
+          </div>
           <label class="field-label">Time</label>
           <div class="time-row">
             <input type="text" id="log-h" maxlength="2" inputmode="numeric" value="12" />
@@ -3376,6 +3486,40 @@ textarea { resize: vertical; min-height: 72px; }
     { type: "tip", tag: "Evidence-Based", title: "Safe saline drops for congestion", desc: "Pediatrician-approved nasal saline is safe from birth. 1–2 drops per nostril before feeds.", color: "#EAF0EB" },
     { type: "meme", tag: "Mama Solidarity", title: "Nobody told me I'd cry over a good latch", color: "#FDE8F4" },
     { type: "recall", tag: "Safety", title: "Check today's CPSC baby & child recalls", desc: "Open Updates → Safety Recalls for the latest walkers, sleep products, toys, and more.", color: "#FDE8E8" },
+  ];
+
+  const DAILY_TIPS = [
+    { title: "Tummy time, tiny sessions", body: "Aim for 3–5 short sessions today — even 2 minutes counts. A rolled towel under baby's chest can help." },
+    { title: "Safe sleep check", body: "Alone, on their Back, in a bare Crib. Soft bedding, bumpers, and inclined sleepers stay out of the sleep space." },
+    { title: "Water, then more water", body: "If you are nursing or pumping, keep a bottle within reach of the chair you actually sit in. Hydration is care work too." },
+    { title: "One-handed reset", body: "When the day frays, pick one 90-second reset: wash your face, open a window, or eat something with protein." },
+    { title: "Village is a verb", body: "Text one person a specific ask (“Can you hold the baby 20 minutes so I can shower?”). Vague “let me know” rarely lands." },
+    { title: "Car-seat check", body: "Chest clip at armpit level, harness snug (no extra slack at the collarbone), and no aftermarket inserts that didn’t come with the seat." },
+    { title: "You are not only a parent", body: "Two minutes for a part of you that isn’t logistics — a verse, a song, a stretch, a sentence in a book — still counts." },
+  ];
+
+  const INTEREST_OPTIONS = [
+    { id: "faith", label: "Faith" },
+    { id: "books", label: "Books" },
+    { id: "fitness", label: "Movement" },
+    { id: "food", label: "Cooking" },
+    { id: "career", label: "Work / career" },
+    { id: "mental", label: "Mental health" },
+    { id: "friends", label: "Friendship" },
+    { id: "create", label: "Making things" },
+    { id: "outdoors", label: "Outdoors" },
+  ];
+
+  const INTEREST_GROUPS = [
+    { id: "g-faith", interest: "faith", title: "Quiet pew", desc: "Short liturgy, honest prayer, and no performative glow. A corner for believing in the messy middle.", meta: "Faith · 12-minute reads" },
+    { id: "g-books", interest: "books", title: "One chapter club", desc: "Books you can actually finish in nap windows. No spoilers in the first comment.", meta: "Books · slow pace" },
+    { id: "g-fit", interest: "fitness", title: "Stroller-optional", desc: "Walks, pelvic-floor honesty, and 8-minute movement — never a before/after contest.", meta: "Movement · gentle" },
+    { id: "g-food", interest: "food", title: "One-hand kitchen", desc: "Meals that survive a baby on the hip. Share the recipe that actually got eaten.", meta: "Cooking · weeknight" },
+    { id: "g-work", interest: "career", title: "Still in the room", desc: "For parents keeping a foot in work, school, or a later-chapter career. Ambition without the hustle sermon.", meta: "Career · private" },
+    { id: "g-mental", interest: "mental", title: "Soft landing", desc: "Anxiety, rage, grief, and the 3 a.m. spiral — named without fixing each other.", meta: "Mental health · moderated" },
+    { id: "g-friends", interest: "friends", title: "Not just mom-friends", desc: "People who ask about you, not only the baby. Low-pressure threads, high follow-through.", meta: "Friendship · small group" },
+    { id: "g-create", interest: "create", title: "Made in the margins", desc: "Knitting, doodling, songs, gardens, half-finished projects. Process over product.", meta: "Making · no critique" },
+    { id: "g-out", interest: "outdoors", title: "Porch light", desc: "Front-step air, neighborhood walks, and weather reports that feel like company.", meta: "Outdoors · local-ish" },
   ];
 
 
@@ -3884,6 +4028,7 @@ textarea { resize: vertical; min-height: 72px; }
       accountRole: "parent",
       village: [],
       inviteCode: "",
+      interests: [],
     };
   }
   function applyAccountToProfile(account) {
@@ -3916,15 +4061,22 @@ textarea { resize: vertical; min-height: 72px; }
       }
       profile.onboarded = true;
       saveProfile();
-      // New signup: no pre-existing logs, reminders, appointments, limbs (village already empty)
-      if (typeof resetAppDataForNewAccount === "function") resetAppDataForNewAccount();
-      else if (typeof applyAppData === "function") applyAppData(typeof emptyAppData === "function" ? emptyAppData() : {});
+      if (opts.keepData) {
+        if (typeof saveAppData === "function") saveAppData();
+      } else if (typeof resetAppDataForNewAccount === "function") {
+        resetAppDataForNewAccount();
+      } else if (typeof applyAppData === "function") {
+        applyAppData(typeof emptyAppData === "function" ? emptyAppData() : {});
+      }
     } else {
       saveProfile();
       if (typeof applyAppData === "function" && typeof loadAppData === "function") applyAppData(loadAppData());
       if (typeof loadInbox === "function") loadInbox();
     }
     document.body.dataset.role = account.role === "limb" ? "limb" : "parent";
+    document.body.classList.toggle("is-guest", false);
+    const guestBan = document.getElementById("guest-banner");
+    if (guestBan) guestBan.hidden = true;
     showLoadingThen(() => {
       showScreen("screen-app");
       applyRoleUI();
@@ -3936,6 +4088,8 @@ textarea { resize: vertical; min-height: 72px; }
         renderMilestones();
         renderFeed();
         updateVillageUI();
+        if (typeof renderDailyTip === "function") renderDailyTip();
+        if (typeof renderInterestGroups === "function") renderInterestGroups();
         if (typeof renderCareReminders === "function") renderCareReminders();
         if (typeof renderAppointments === "function") renderAppointments();
       } catch (e) {}
@@ -3997,7 +4151,9 @@ textarea { resize: vertical; min-height: 72px; }
       saveAccounts(list);
 
       closeModal("signup");
+      const keepData = document.body.classList.contains("is-guest");
       enterAppAs(account, {
+        keepData,
         seedProfile: {
           userName: firstName,
           lastName,
@@ -4159,12 +4315,55 @@ textarea { resize: vertical; min-height: 72px; }
     PROFILE_KEY = "mh_profile_v1";
     profile = defaultProfile();
     document.body.dataset.role = "";
+    document.body.classList.remove("is-guest");
+    const guestBan = document.getElementById("guest-banner");
+    if (guestBan) guestBan.hidden = true;
     showScreen("screen-auth");
     toast("Signed out");
+  }
+  function setGuestBanner(on) {
+    const ban = document.getElementById("guest-banner");
+    if (ban) ban.hidden = !on;
+    document.body.classList.toggle("is-guest", !!on);
+  }
+  function enterGuestPreview(opts) {
+    opts = opts || {};
+    currentAccount = null;
+    saveSession("guest");
+    PROFILE_KEY = "mh_profile_guest";
+    profile = loadProfile();
+    profile.accountRole = "parent";
+    document.body.dataset.role = "parent";
+    setGuestBanner(true);
+    const go = () => {
+      showScreen("screen-app");
+      applyRoleUI();
+      updateHomeDateLine();
+      if (typeof applyAppData === "function" && typeof loadAppData === "function") applyAppData(loadAppData());
+      try {
+        renderLogs();
+        renderMilestones();
+        renderFeed();
+        updateVillageUI();
+        if (typeof renderDailyTip === "function") renderDailyTip();
+        if (typeof renderInterestGroups === "function") renderInterestGroups();
+        if (typeof renderCareReminders === "function") renderCareReminders();
+        if (typeof renderAppointments === "function") renderAppointments();
+      } catch (e) {}
+      const homeGreet = document.querySelector(".home-greeting");
+      if (homeGreet) homeGreet.textContent = "Hello" + (profile.userName ? " " + profile.userName : "");
+      toast("Preview mode · saved on this device");
+    };
+    if (opts.skipLoading) go();
+    else showLoadingThen(go);
   }
   function restoreSessionIfAny() {
     const s = loadSession();
     if (!s) return false;
+    if (s.accountId === "guest") {
+      enterGuestPreview({ skipLoading: true });
+      return true;
+    }
     const account = findAccountById(s.accountId);
     if (!account) {
       clearSession();
@@ -4189,6 +4388,8 @@ textarea { resize: vertical; min-height: 72px; }
     try {
       renderLogs();
       renderMilestones();
+      if (typeof renderDailyTip === "function") renderDailyTip();
+      if (typeof renderInterestGroups === "function") renderInterestGroups();
       if (typeof renderCareReminders === "function") renderCareReminders();
       if (typeof renderAppointments === "function") renderAppointments();
     } catch (e) {}
@@ -4206,6 +4407,11 @@ textarea { resize: vertical; min-height: 72px; }
     $("#btn-join-limb")?.addEventListener("click", () => {
       showAuthError("limb-error", "");
       openModal("limb-invite");
+    });
+    $("#btn-try-app")?.addEventListener("click", () => enterGuestPreview());
+    $("#guest-create")?.addEventListener("click", () => {
+      showAuthError("signup-error", "");
+      openModal("signup");
     });
     $("#su-to-signin")?.addEventListener("click", () => {
       closeModal("signup");
@@ -4295,6 +4501,7 @@ textarea { resize: vertical; min-height: 72px; }
       parentRole: "mom", // mom | dad
       village: [],
       inviteCode: "",
+      interests: [],
     };
   }
   let profile = loadProfile();
@@ -4306,6 +4513,7 @@ textarea { resize: vertical; min-height: 72px; }
   if (!profile.userName) profile.userName = "";
   if (!profile.parentRole) profile.parentRole = "mom";
   if (!profile.zip) profile.zip = "99701";
+  if (!Array.isArray(profile.interests)) profile.interests = [];
 
 
   function getChildren() {
@@ -4919,21 +5127,25 @@ textarea { resize: vertical; min-height: 72px; }
   function renderLogs() {
     function rowHtml(l) {
       return `
-      <li data-id="${l.id}">
+      <li data-id="${escapeHtml(l.id)}">
         <span class="log-dot"></span>
         <div>
-          <div class="log-label">${l.label}</div>
-          <div class="log-meta">${l.dur || "—"} · ${l.time}${l.note ? " · " + l.note : ""}</div>
+          <div class="log-label">${escapeHtml(l.label)}</div>
+          <div class="log-meta">${escapeHtml(l.dur || "—")} · ${escapeHtml(l.time)}${l.note ? " · " + escapeHtml(l.note) : ""}</div>
           ${l.viaVoice ? '<div class="log-voice">via voice</div>' : ""}
         </div>
       </li>`;
     }
     const ul = $("#log-list");
     if (ul) {
-      ul.innerHTML = logs.map(rowHtml).join("");
-      $$("#log-list li").forEach((li) => {
-        li.addEventListener("click", () => openLogEdit(li.dataset.id));
-      });
+      if (!logs.length) {
+        ul.innerHTML = '<li class="log-empty">No entries yet. Start a timer or tap Log now.</li>';
+      } else {
+        ul.innerHTML = logs.map(rowHtml).join("");
+        $$("#log-list li[data-id]").forEach((li) => {
+          li.addEventListener("click", () => openLogEdit(li.dataset.id));
+        });
+      }
     }
     const miscUl = $("#log-list-misc");
     if (miscUl) {
@@ -5387,10 +5599,11 @@ textarea { resize: vertical; min-height: 72px; }
       <div class="settings-row"><span>Safety recalls</span><div class="toggle on" data-tog="recalls"></div></div>
       <div class="settings-sec">Account</div>
       <div class="settings-account-block">
-        <p class="field-note" style="margin-top:0">Signed in as <strong id="set-account-name"></strong></p>
+        <p class="field-note" style="margin-top:0">${document.body.classList.contains("is-guest") ? "Preview mode — this device only" : "Signed in as <strong id=\"set-account-name\"></strong>"}</p>
         <p class="field-note" style="margin-top:4px">Email: <strong id="set-account-email"></strong></p>
         <p class="field-note" style="margin-top:4px">Phone: <strong id="set-account-phone"></strong></p>
-        <button class="modal-close" id="sign-out" style="color:var(--recall);margin-top:8px">Sign out</button>
+        ${document.body.classList.contains("is-guest") ? '<button type="button" class="btn-primary full" id="set-guest-create" style="margin-top:10px">Create parent account</button>' : ""}
+        <button class="modal-close" id="sign-out" style="color:var(--recall);margin-top:8px">${document.body.classList.contains("is-guest") ? "Leave preview" : "Sign out"}</button>
       </div>
     `;
     const grid = $("#theme-grid");
@@ -5481,7 +5694,7 @@ textarea { resize: vertical; min-height: 72px; }
       listEl.innerHTML = getChildren()
         .map(
           (c) => `<div class="children-list-row">
-            <button type="button" class="multi-chip${c.id === profile.activeChildId ? " on" : ""}" data-switch="${c.id}">${escapeHtml(c.name)}</button>
+            <button type="button" class="multi-chip${c.id === profile.activeChildId ? " on" : ""}" data-switch="${c.id}">${escapeHtml(c.name || "Child")}</button>
             <span class="field-note" style="margin:0">${c.birthday ? childAgeLabel(c.birthday) || c.birthday : "Birthday not set"}</span>
           </div>`
         )
@@ -5537,8 +5750,13 @@ textarea { resize: vertical; min-height: 72px; }
     const accEmail = (currentAccount && currentAccount.email) || profile.email || "—";
     const accPhone = (currentAccount && (currentAccount.phoneDisplay || formatPhoneDisplay(currentAccount.phone))) || (profile.phone ? formatPhoneDisplay(profile.phone) : "—");
     const nEl = $("#set-account-name"); if (nEl) nEl.textContent = accName;
-    const eEl = $("#set-account-email"); if (eEl) eEl.textContent = accEmail;
-    const pEl = $("#set-account-phone"); if (pEl) pEl.textContent = accPhone;
+    const eEl = $("#set-account-email"); if (eEl) eEl.textContent = document.body.classList.contains("is-guest") ? "Not signed in" : accEmail;
+    const pEl = $("#set-account-phone"); if (pEl) pEl.textContent = document.body.classList.contains("is-guest") ? "—" : accPhone;
+    $("#set-guest-create")?.addEventListener("click", () => {
+      closeModal("settings");
+      showAuthError("signup-error", "");
+      openModal("signup");
+    });
     $("#sign-out")?.addEventListener("click", () => {
       closeModal("settings");
       signOutAccount();
@@ -6527,6 +6745,8 @@ textarea { resize: vertical; min-height: 72px; }
     $$(".ampm-btn").forEach((b) => b.classList.toggle("active", b.dataset.a === logAmpm));
     logDate = "today";
     $$("#log-date-chips .date-chip").forEach((c) => c.classList.toggle("active", c.dataset.d === "today"));
+    const otherWrap = $("#log-other-wrap");
+    if (otherWrap) otherWrap.hidden = true;
     updateLogPreview();
     openModal("log");
     // Open notes-focused types: put cursor in notes
@@ -6549,7 +6769,8 @@ textarea { resize: vertical; min-height: 72px; }
     const note = $("#log-note").value || "—";
     const h = $("#log-h").value || "12";
     const m = String(parseInt($("#log-m").value, 10) || 0).padStart(2, "0");
-    const d = logDate === "yesterday" ? "Yesterday" : "Today";
+    const other = $("#log-other-date")?.value || "";
+    const d = logDate === "yesterday" ? "Yesterday" : logDate === "other" && other ? other : "Today";
     $("#log-preview").textContent = `${label} · ${note} · ${d} ${h}:${m} ${logAmpm}`;
   }
 
@@ -6558,7 +6779,8 @@ textarea { resize: vertical; min-height: 72px; }
     const note = $("#log-note").value.trim();
     const h = $("#log-h").value || "12";
     const m = String(parseInt($("#log-m").value, 10) || 0).padStart(2, "0");
-    const prefix = logDate === "yesterday" ? "Yesterday · " : "";
+    const other = $("#log-other-date")?.value || "";
+    const prefix = logDate === "yesterday" ? "Yesterday · " : (logDate === "other" && other ? other + " · " : "");
     const time = prefix + `${h}:${m} ${logAmpm}`;
     const idx = logs.findIndex((l) => l.id === editingId);
     if (idx >= 0) {
@@ -7092,6 +7314,68 @@ textarea { resize: vertical; min-height: 72px; }
   }
 
 
+  function renderDailyTip() {
+    const h = $("#todays-tip h3");
+    const p = $("#todays-tip p");
+    if (!h || !p || !DAILY_TIPS.length) return;
+    const tip = DAILY_TIPS[new Date().getDate() % DAILY_TIPS.length];
+    h.textContent = tip.title;
+    p.textContent = tip.body;
+  }
+
+  function renderInterestGroups() {
+    const root = $("#group-list");
+    if (!root) return;
+    const selected = Array.isArray(profile.interests) ? profile.interests : [];
+    if (!selected.length) {
+      root.innerHTML = `
+        <div class="empty-interests">
+          <div class="empty-icon">⸙</div>
+          <h3>Find your people</h3>
+          <p>Add a few interests and we'll surface quiet community groups that fit.</p>
+          <button class="btn-primary" id="btn-add-interests" type="button">Add interests</button>
+        </div>`;
+      $("#btn-add-interests")?.addEventListener("click", openInterestsPicker);
+      return;
+    }
+    const groups = INTEREST_GROUPS.filter((g) => selected.includes(g.interest));
+    root.innerHTML =
+      groups
+        .map(
+          (g) => `
+        <article class="group-card">
+          <h4>${escapeHtml(g.title)}</h4>
+          <p>${escapeHtml(g.desc)}</p>
+          <div class="group-meta">${escapeHtml(g.meta)}</div>
+        </article>`
+        )
+        .join("") +
+      `<button type="button" class="btn-ghost full" id="btn-edit-interests">Edit interests</button>`;
+    $("#btn-edit-interests")?.addEventListener("click", openInterestsPicker);
+  }
+
+  function openInterestsPicker() {
+    const box = $("#interest-chips");
+    if (!box) return;
+    const selected = new Set(profile.interests || []);
+    box.innerHTML = INTEREST_OPTIONS.map(
+      (o) =>
+        `<button type="button" class="multi-chip${selected.has(o.id) ? " on" : ""}" data-interest="${o.id}">${escapeHtml(o.label)}</button>`
+    ).join("");
+    $$("#interest-chips .multi-chip").forEach((chip) => {
+      chip.addEventListener("click", () => chip.classList.toggle("on"));
+    });
+    openModal("interests");
+  }
+
+  function saveInterests() {
+    profile.interests = $$("#interest-chips .multi-chip.on").map((c) => c.dataset.interest);
+    saveProfile();
+    closeModal("interests");
+    renderInterestGroups();
+    toast(profile.interests.length ? "Interests saved" : "Interests cleared");
+  }
+
   // Init
   function init() {
     applyReadability();
@@ -7231,8 +7515,9 @@ textarea { resize: vertical; min-height: 72px; }
         renderRecalls();
       });
     });
-    $("#btn-add-interests")?.addEventListener("click", () => toast("Interest picker coming soon"));
-    $(".tip-play")?.addEventListener("click", () => toast("Short video coming soon — the tip above still works today"));
+    $("#interests-save")?.addEventListener("click", saveInterests);
+    renderInterestGroups();
+    renderDailyTip();
 
     // Modal closes
     $$("[data-close]").forEach((btn) => {
@@ -7249,7 +7534,11 @@ textarea { resize: vertical; min-height: 72px; }
       c.addEventListener("click", () => {
         logDate = c.dataset.d;
         $$("#log-date-chips .date-chip").forEach((x) => x.classList.toggle("active", x === c));
-        if (logDate === "other") toast("Full calendar coming soon — using Today");
+        const wrap = $("#log-other-wrap");
+        if (wrap) wrap.hidden = logDate !== "other";
+        if (logDate === "other" && !$("#log-other-date").value) {
+          $("#log-other-date").value = new Date().toISOString().slice(0, 10);
+        }
         updateLogPreview();
       });
     });
@@ -7263,6 +7552,7 @@ textarea { resize: vertical; min-height: 72px; }
     $("#log-h")?.addEventListener("input", updateLogPreview);
     $("#log-m")?.addEventListener("input", updateLogPreview);
     $("#log-note")?.addEventListener("input", updateLogPreview);
+    $("#log-other-date")?.addEventListener("change", updateLogPreview);
     $("#log-save")?.addEventListener("click", saveLog);
     $("#log-delete")?.addEventListener("click", deleteLog);
 
