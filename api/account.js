@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
   if (req.method === "GET") {
     const { user } = await dbx.requireUser(req);
     if (!user) return dbx.send(res, 401, { ok: false, error: "Sign in required" });
-    return dbx.send(res, 200, { ok: true, user: dbx.publicUser(user), store: dbx.kind() });
+    return dbx.send(res, 200, { ok: true, user: dbx.publicUser(user), store: dbx.kind(), db: dbx.stats(await dbx.load()) });
   }
 
   if (req.method !== "POST") return dbx.send(res, 405, { ok: false });
@@ -64,7 +64,8 @@ module.exports = async function handler(req, res) {
       existing.lastSeen = new Date().toISOString();
       if (dbx.isDevPhone(existing.phone)) existing.developer = true;
       const token = dbx.newToken();
-      db.sessions.push({ token, accountId: existing.id, exp: Date.now() + 30 * 86400000 });
+      db.sessions.push({ token, accountId: existing.id, exp: Date.now() + 90 * 86400000 });
+      dbx.recordLogin(db, existing, "resume");
       await dbx.save(db);
       return dbx.send(res, 200, { ok: true, token, user: dbx.publicUser(existing), resumed: true, store: dbx.kind() });
     }
@@ -93,7 +94,8 @@ module.exports = async function handler(req, res) {
       };
     }
     const token = dbx.newToken();
-    db.sessions.push({ token, accountId: user.id, exp: Date.now() + 30 * 86400000 });
+    db.sessions.push({ token, accountId: user.id, exp: Date.now() + 90 * 86400000 });
+    dbx.recordLogin(db, user, "signup");
     const welcomed = await welcome.sendWelcomeAccount(user, db);
     if (user.developer) {
       await sms.notifyOwner(
@@ -130,8 +132,9 @@ module.exports = async function handler(req, res) {
     user.lastSeen = new Date().toISOString();
     if (dbx.isDevPhone(user.phone)) user.developer = true;
     const token = dbx.newToken();
-    db.sessions.push({ token, accountId: user.id, exp: Date.now() + 30 * 86400000 });
+    db.sessions.push({ token, accountId: user.id, exp: Date.now() + 90 * 86400000 });
     db.sessions = db.sessions.filter((s) => s.exp > Date.now()).slice(-200);
+    dbx.recordLogin(db, user, "signin");
     await dbx.save(db);
     return dbx.send(res, 200, { ok: true, token, user: dbx.publicUser(user), store: dbx.kind() });
   }

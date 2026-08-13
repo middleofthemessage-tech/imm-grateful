@@ -34,6 +34,10 @@ Mail and texts do **not** depend on Twilio. The app tries:
 
 Failed sends sit in a retry box and are flushed every couple of hours, on each deploy, and when someone opens the app. Add a free [Resend](https://resend.com) key in Vercel so carrier texts can reach US phones.
 
+## IMM database
+
+IMM keeps its own database (`imm-db`) for accounts, sessions, vaults, households, logins, and daily backups. Sign-in stays on the device (Stay signed in). Settings has **Download my backup** and **Restore a backup file**. The owner Dev tab can download the full IMM database.
+
 ## Protected storage
 
 Each signed-in person gets a locked vault (profile, tracking, reminders, village). The API only opens a vault for:

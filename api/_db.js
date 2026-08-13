@@ -12,7 +12,49 @@ let mem = null;
 let storeKind = "file";
 
 function emptyDb() {
-  return { users: [], sessions: [], vaults: {}, events: [], invites: {}, households: {}, meta: { alerts: {}, smsLog: [] } };
+  return {
+    name: "imm-db",
+    schemaVersion: 2,
+    users: [],
+    sessions: [],
+    vaults: {},
+    events: [],
+    invites: {},
+    households: {},
+    logins: [],
+    backups: [],
+    meta: { alerts: {}, smsLog: [], outbox: [], createdAt: new Date().toISOString() },
+  };
+}
+
+function rotateBackups(db) {
+  const today = new Date().toISOString().slice(0, 10);
+  if (!Array.isArray(db.backups)) db.backups = [];
+  const already = db.backups.find((b) => (b.at || "").slice(0, 10) === today);
+  const snap = {
+    id: "bk_" + today,
+    at: new Date().toISOString(),
+    users: (db.users || []).length,
+    vaults: Object.keys(db.vaults || {}).length,
+    households: Object.keys(db.households || {}).length,
+    events: (db.events || []).length,
+  };
+  if (already) Object.assign(already, snap);
+  else db.backups.unshift(snap);
+  db.backups = db.backups.slice(0, 14);
+}
+
+function recordLogin(db, user, source) {
+  if (!user) return;
+  if (!Array.isArray(db.logins)) db.logins = [];
+  db.logins.unshift({
+    id: "lg_" + Date.now().toString(36),
+    accountId: user.id,
+    role: user.role,
+    at: new Date().toISOString(),
+    source: source || "signin",
+  });
+  db.logins = db.logins.slice(0, 200);
 }
 
 function redisCreds() {
@@ -88,8 +130,42 @@ async function load() {
 
 async function save(db) {
   mem = db;
+  try { rotateBackups(db); } catch (e) {}
   try { await remoteSet(db); } catch (e) {}
   fileSave(db);
+}
+
+function stats(db) {
+  db = db || emptyDb();
+  return {
+    name: "imm-db",
+    schemaVersion: db.schemaVersion || 2,
+    store: kind(),
+    users: (db.users || []).length,
+    sessions: (db.sessions || []).filter((s) => s.exp > Date.now()).length,
+    vaults: Object.keys(db.vaults || {}).length,
+    households: Object.keys(db.households || {}).length,
+    events: (db.events || []).length,
+    backups: (db.backups || []).slice(0, 7),
+    lastBackup: (db.backups && db.backups[0] && db.backups[0].at) || null,
+    lastLogin: (db.logins && db.logins[0] && db.logins[0].at) || null,
+  };
+}
+
+function exportSafe(db) {
+  return {
+    name: "imm-db",
+    schemaVersion: db.schemaVersion || 2,
+    exportedAt: new Date().toISOString(),
+    users: (db.users || []).map(publicUser),
+    vaults: db.vaults || {},
+    households: db.households || {},
+    invites: db.invites || {},
+    events: (db.events || []).slice(0, 200),
+    logins: (db.logins || []).slice(0, 80),
+    backups: db.backups || [],
+    meta: { alerts: (db.meta && db.meta.alerts) || {}, notifiedVersion: db.meta && db.meta.notifiedVersion },
+  };
 }
 
 function digits(phone) {
@@ -205,5 +281,5 @@ function sanitizeVault(input) {
 module.exports = {
   DEV_PHONES, load, save, emptyDb, digits, isDevPhone, hashPass, checkPass,
   newToken, findUser, getSession, requireUser, publicUser, readBody, send,
-  kind, sanitizeVault,
+  kind, sanitizeVault, stats, exportSafe, recordLogin, rotateBackups,
 };

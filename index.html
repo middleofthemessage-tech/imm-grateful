@@ -2683,6 +2683,11 @@ a:focus:not(:focus-visible) { outline: none; }
             <input class="field-input" id="si-password" type="password" autocomplete="current-password" required />
             <button type="button" class="password-toggle" data-toggle="si-password">Show</button>
           </div>
+          <div class="settings-row" style="border:none;padding:10px 0 0">
+            <span>Stay signed in on this device</span>
+            <div class="toggle on" id="si-stay"></div>
+          </div>
+          <p class="field-note">IMM saves your login and backs up your care data to its own database. Passwords stay hashed.</p>
           <button type="button" class="btn-primary full" id="si-submit" style="margin-top:16px">Sign in</button>
           <button type="button" class="btn-ghost full" id="si-to-signup" style="margin-top:8px">New parent? Create account</button>
         </div>
@@ -2966,6 +2971,12 @@ a:focus:not(:focus-visible) { outline: none; }
             <p class="invite-code-box" style="margin-top:8px"><strong id="dev-share-url">https://imm-grateful.vercel.app/</strong></p>
             <button type="button" class="btn-primary full" id="dev-copy-link" style="margin-top:10px">Copy live link</button>
             <button type="button" class="btn-ghost full" id="dev-refresh" style="margin-top:8px">Refresh now</button>
+          </section>
+          <section class="card">
+            <div class="card-head"><h3>IMM database</h3><span class="muted" id="dev-db-kind">imm-db</span></div>
+            <p class="field-note" id="dev-db-note" style="margin-top:0">Accounts, vaults, logins, and backups live in IMM’s own database.</p>
+            <div class="home-chips" id="dev-db-counts"></div>
+            <button type="button" class="btn-primary full" id="dev-db-download" style="margin-top:10px">Download IMM database</button>
           </section>
           <section class="card">
             <div class="card-head"><h3>Texts to you</h3><span class="muted">+1 · 8593</span></div>
@@ -4383,10 +4394,10 @@ a:focus:not(:focus-visible) { outline: none; }
 
 
   // ── Account system (email + phone required) ─────────────────────────
-  // Accounts are stored in this browser (localStorage) with hashed passwords.
-  // Cross-device cloud auth can be added later (Supabase / Netlify Identity).
+  // Accounts live in IMM's database and are cached on this device (hashed passwords).
   const ACCOUNTS_KEY = "mh_accounts_v1";
   const SESSION_KEY = "mh_session_v1";
+  const REMEMBER_KEY = "mh_remember_contact";
   let currentAccount = null;
 
   function loadAccounts() {
@@ -4413,8 +4424,16 @@ a:focus:not(:focus-visible) { outline: none; }
   }
   function saveSession(accountId) {
     try {
-      localStorage.setItem(SESSION_KEY, JSON.stringify({ accountId, at: Date.now() }));
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ accountId, at: Date.now(), stay: true }));
     } catch (e) {}
+  }
+  function rememberContact(contact) {
+    try {
+      if (contact) localStorage.setItem(REMEMBER_KEY, String(contact).trim());
+    } catch (e) {}
+  }
+  function rememberedContact() {
+    try { return localStorage.getItem(REMEMBER_KEY) || ""; } catch (e) { return ""; }
   }
   function clearSession() {
     try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
@@ -4697,6 +4716,7 @@ a:focus:not(:focus-visible) { outline: none; }
         },
       });
       writeHouseholdFor(account.id, { trackingEnabled, limbUpdateMode });
+      rememberContact(email || phone);
       const cloud = await cloudSignup(account, password);
       await registerInviteCloud(profile.inviteCode, loadHousehold());
       await pushVault();
@@ -4742,6 +4762,7 @@ a:focus:not(:focus-visible) { outline: none; }
             : ((cloud && cloud.error) || "No account found for that email or phone.")
         );
       }
+      rememberContact(contact);
       closeModal("signin");
       enterAppAs(account);
     } catch (err) {
@@ -4874,6 +4895,7 @@ a:focus:not(:focus-visible) { outline: none; }
         headers: cloudHeaders(),
         body: JSON.stringify({ action: "limb-join", inviteCode: code }),
       }).catch(() => {});
+      rememberContact(email || phone);
       await pushVault();
       sendWelcomeNotify({ email, phone, name: firstName, role: "limb", alreadySent: !!(cloud && cloud.welcomed) });
       toast("You’re in as Limb · " + firstName);
@@ -4949,7 +4971,6 @@ a:focus:not(:focus-visible) { outline: none; }
     }
     const account = findAccountById(s.accountId);
     if (!account) {
-      clearSession();
       return false;
     }
     currentAccount = account;
@@ -4985,6 +5006,24 @@ a:focus:not(:focus-visible) { outline: none; }
     });
     return true;
   }
+  async function restoreCloudSessionIfAny() {
+    let token = "";
+    try { token = localStorage.getItem("mh_cloud_token") || sessionStorage.getItem("mh_cloud_token") || ""; } catch (e) {}
+    if (!token) return false;
+    cloudToken = token;
+    try {
+      const res = await fetch("/api/account", { headers: cloudHeaders() });
+      const data = await res.json();
+      if (!data || !data.ok || !data.user) return false;
+      const existing = findAccountById(data.user.id) || findAccountByContact(data.user.email || data.user.phone || "");
+      const account = await upsertLocalFromCloud(data.user, "", existing);
+      rememberContact(data.user.email || data.user.phone || "");
+      enterAppAs(account);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
   function wireAccountAuth() {
     $("#btn-create-parent")?.addEventListener("click", () => {
       showAuthError("signup-error", "");
@@ -4997,6 +5036,8 @@ a:focus:not(:focus-visible) { outline: none; }
     });
     $("#btn-open-signin")?.addEventListener("click", () => {
       showAuthError("signin-error", "");
+      const remembered = rememberedContact();
+      if ($("#si-contact") && remembered && !$("#si-contact").value) $("#si-contact").value = remembered;
       openModal("signin");
     });
     $("#btn-join-limb")?.addEventListener("click", () => {
@@ -5594,9 +5635,11 @@ a:focus:not(:focus-visible) { outline: none; }
   }
   function rememberCloudToken(token) {
     cloudToken = token || "";
+    const stay = !$("#si-stay") || $("#si-stay").classList.contains("on");
     try {
       if (cloudToken) {
-        localStorage.setItem("mh_cloud_token", cloudToken);
+        if (stay) localStorage.setItem("mh_cloud_token", cloudToken);
+        else localStorage.removeItem("mh_cloud_token");
         sessionStorage.setItem("mh_cloud_token", cloudToken);
       } else {
         localStorage.removeItem("mh_cloud_token");
@@ -5786,6 +5829,60 @@ a:focus:not(:focus-visible) { outline: none; }
     clearTimeout(cloudSyncTimer);
     cloudSyncTimer = setTimeout(pushVault, 800);
   }
+  function downloadBlob(name, obj) {
+    const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  async function downloadMyBackup() {
+    const local = {
+      name: "imm-person",
+      exportedAt: new Date().toISOString(),
+      account: currentAccount ? { id: currentAccount.id, role: currentAccount.role, firstName: currentAccount.firstName, email: currentAccount.email, phone: currentAccount.phone } : null,
+      vault: collectVault(),
+    };
+    try {
+      const res = await fetch("/api/backup", { method: "POST", headers: cloudHeaders(), body: JSON.stringify({ action: "me" }) });
+      const data = await res.json();
+      if (data && data.ok && data.backup) {
+        data.backup.local = local;
+        downloadBlob("imm-backup-" + (currentAccount && currentAccount.id || "me") + ".json", data.backup);
+        toast("Backup downloaded");
+        return;
+      }
+    } catch (e) {}
+    downloadBlob("imm-backup-local.json", local);
+    toast("Device backup downloaded");
+  }
+  async function restoreMyBackupFile(ev) {
+    const file = ev && ev.target && ev.target.files && ev.target.files[0];
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      const vault = (data && data.backup && data.backup.vault) || data.vault || (data.local && data.local.vault) || data;
+      if (!vault || typeof vault !== "object") throw new Error("Not an IMM backup");
+      cloudApplying = true;
+      if (vault.profile) profile = Object.assign(profile, vault.profile);
+      if (vault.appData && typeof applyAppData === "function") applyAppData(vault.appData);
+      if (vault.household && householdId()) {
+        try { localStorage.setItem("mh_household_" + householdId(), JSON.stringify(vault.household)); } catch (e) {}
+      }
+      if (Array.isArray(vault.inbox)) parentInbox = vault.inbox;
+      try { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); } catch (e) {}
+      if (typeof saveAppData === "function") saveAppData();
+      cloudApplying = false;
+      scheduleCloudSync();
+      try { renderLogs(); renderMilestones(); updateVillageUI(); } catch (e) {}
+      toast("Backup restored · saved to IMM");
+    } catch (e) {
+      toast("Could not read that backup file");
+    }
+    ev.target.value = "";
+  }
   function trackCloud(type, label) {
     const payload = {
       type,
@@ -5866,6 +5963,24 @@ a:focus:not(:focus-visible) { outline: none; }
         ob.innerHTML = (box.recent || []).slice(0, 8).map((e) =>
           `<li><span class="log-dot"></span><div><div class="log-label">${escapeHtml(e.kind)} · ${escapeHtml(e.status)}</div><div class="log-meta">${escapeHtml(e.to || "")} · ${escapeHtml(e.via || e.lastError || "")} · try ${escapeHtml(String(e.tries || 0))}</div></div></li>`
         ).join("") || "";
+      }
+      const dbinfo = data.db || {};
+      const dbKind = $("#dev-db-kind");
+      if (dbKind) dbKind.textContent = dbinfo.store || data.store || "imm-db";
+      const dbNote = $("#dev-db-note");
+      if (dbNote) {
+        dbNote.textContent = dbinfo.store === "upstash"
+          ? "IMM database is live and durable. Logins and vaults survive deploys."
+          : "IMM database is running. Add Vercel KV so it stays durable across deploys.";
+      }
+      const dbChips = $("#dev-db-counts");
+      if (dbChips) {
+        dbChips.innerHTML = [
+          ["Accounts", dbinfo.users || 0],
+          ["Vaults", dbinfo.vaults || 0],
+          ["Sessions", dbinfo.sessions || 0],
+          ["Backups", (dbinfo.backups && dbinfo.backups.length) || 0],
+        ].map(([k, v]) => `<div class="chip"><span>${k}</span><strong>${v}</strong></div>`).join("");
       }
     } catch (e) {
       if (note) note.textContent = "Live store is waking up. Try Refresh now.";
@@ -7333,6 +7448,13 @@ a:focus:not(:focus-visible) { outline: none; }
         <p class="field-note" style="margin-top:4px">Email: <strong id="set-account-email"></strong></p>
         <p class="field-note" style="margin-top:4px">Phone: <strong id="set-account-phone"></strong></p>
         ${document.body.classList.contains("is-guest") ? '<button type="button" class="btn-primary full" id="set-guest-create" style="margin-top:10px">Create parent account</button>' : ""}
+        ${document.body.classList.contains("is-guest") ? "" : `
+        <div class="settings-sec">IMM backup</div>
+        <p class="field-note" style="margin-top:0">Your login and care data are saved in IMM’s database and on this device. Download a copy anytime.</p>
+        <button type="button" class="btn-primary full" id="set-backup-download" style="margin-top:8px">Download my backup</button>
+        <button type="button" class="btn-ghost full" id="set-backup-restore" style="margin-top:8px">Restore a backup file</button>
+        <input id="set-backup-file" type="file" accept="application/json,.json" hidden />
+        `}
         <button class="modal-close" id="sign-out" style="color:var(--recall);margin-top:8px">${document.body.classList.contains("is-guest") ? "Leave preview" : "Sign out"}</button>
       </div>
     `;
@@ -7550,6 +7672,9 @@ a:focus:not(:focus-visible) { outline: none; }
       showAuthError("signup-error", "");
       openModal("signup");
     });
+    $("#set-backup-download")?.addEventListener("click", downloadMyBackup);
+    $("#set-backup-restore")?.addEventListener("click", () => $("#set-backup-file")?.click());
+    $("#set-backup-file")?.addEventListener("change", restoreMyBackupFile);
     $("#sign-out")?.addEventListener("click", () => {
       closeModal("settings");
       signOutAccount();
@@ -9292,6 +9417,7 @@ a:focus:not(:focus-visible) { outline: none; }
       profile = defaultProfile();
       resetBlankWorkspace();
       showScreen("screen-auth");
+      restoreCloudSessionIfAny();
     }
 
     // Tabs
@@ -9302,6 +9428,17 @@ a:focus:not(:focus-visible) { outline: none; }
     $("#dev-peek-close")?.addEventListener("click", () => { const p = $("#dev-peek"); if (p) p.hidden = true; });
     $("#watch-alert-save")?.addEventListener("click", saveWatchAlertChoice);
     $("#watch-alert-keep")?.addEventListener("click", () => closeModal("watch-alert"));
+    $("#si-stay")?.addEventListener("click", () => $("#si-stay").classList.toggle("on"));
+    $("#dev-db-download")?.addEventListener("click", async () => {
+      try {
+        const res = await fetch("/api/backup", { method: "POST", headers: cloudHeaders(), body: JSON.stringify({ action: "export" }) });
+        const data = await res.json();
+        if (data && data.ok && data.backup) {
+          downloadBlob("imm-database.json", data.backup);
+          toast("IMM database downloaded");
+        } else toast("Could not export the database");
+      } catch (e) { toast("Could not export the database"); }
+    });
     $("#dev-refresh")?.addEventListener("click", () => refreshDevDashboard());
     $("#dev-retry-outbox")?.addEventListener("click", async () => {
       try {

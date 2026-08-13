@@ -54,6 +54,7 @@ module.exports = async function handler(req, res) {
       smsLog: (meta.smsLog || []).slice(0, 12),
       notifiedVersion: meta.notifiedVersion || null,
       outbox: outbox.summary(db),
+      db: dbx.stats(db),
       at: Date.now(),
     });
   }
