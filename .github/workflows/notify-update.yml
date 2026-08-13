@@ -3,6 +3,8 @@ name: Text owner when the app updates
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: "20 */2 * * *"
   workflow_dispatch:
 
 jobs:
@@ -10,8 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Wait for Vercel to publish
+        if: github.event_name == 'push'
         run: sleep 100
-      - name: Tell the live app to text the owner
+      - name: Flush mail/text outbox and notify owner of updates
         run: |
           curl -sS -X POST "https://imm-grateful.vercel.app/api/ping" \
             -H "Content-Type: application/json" \

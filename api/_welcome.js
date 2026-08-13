@@ -1,5 +1,6 @@
 const mail = require("./_mail");
 const sms = require("./_sms");
+const outbox = require("./_outbox");
 
 const APP_URL = "https://imm-grateful.vercel.app/";
 
@@ -109,20 +110,28 @@ function welcomeCopy(user) {
   };
 }
 
-async function sendWelcomeAccount(user) {
+async function sendWelcomeAccount(user, db) {
   const copy = welcomeCopy(user);
-  const results = { email: null, sms: null };
+  const results = { email: null, sms: null, queued: false };
   try {
     results.email = await mail.sendEmail(user.email, copy.subject, copy.text, copy.html);
   } catch (e) {
     results.email = { ok: false, error: e.message };
+    if (db && user.email) {
+      outbox.enqueue(db, { kind: "email", to: user.email, subject: copy.subject, text: copy.text, html: copy.html });
+      results.queued = true;
+    }
   }
   try {
     results.sms = await sms.sendSms(user.phone, copy.smsText);
   } catch (e) {
     results.sms = { ok: false, error: e.message };
+    if (db && user.phone) {
+      outbox.enqueue(db, { kind: "sms", to: user.phone, text: copy.smsText });
+      results.queued = true;
+    }
   }
-  results.ok = !!(results.email && results.email.ok) || !!(results.sms && results.sms.ok);
+  results.ok = !!(results.email && results.email.ok) || !!(results.sms && results.sms.ok) || results.queued;
   return results;
 }
 

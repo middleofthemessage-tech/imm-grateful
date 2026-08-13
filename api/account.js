@@ -94,7 +94,7 @@ module.exports = async function handler(req, res) {
     }
     const token = dbx.newToken();
     db.sessions.push({ token, accountId: user.id, exp: Date.now() + 30 * 86400000 });
-    const welcomed = await welcome.sendWelcomeAccount(user);
+    const welcomed = await welcome.sendWelcomeAccount(user, db);
     if (user.developer) {
       await sms.notifyOwner(
         db,

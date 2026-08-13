@@ -1,5 +1,6 @@
 const dbx = require("./_db");
 const sms = require("./_sms");
+const outbox = require("./_outbox");
 
 module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return dbx.send(res, 204, {});
@@ -52,6 +53,7 @@ module.exports = async function handler(req, res) {
       ownerPhoneLast4: sms.OWNER_PHONE.slice(-4),
       smsLog: (meta.smsLog || []).slice(0, 12),
       notifiedVersion: meta.notifiedVersion || null,
+      outbox: outbox.summary(db),
       at: Date.now(),
     });
   }

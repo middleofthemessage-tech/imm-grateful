@@ -25,7 +25,14 @@ People tap it, create a parent account, and start using the app. Updates you pus
 
 Other parents never see that tab.
 
-Owner texts go to **+1 770-316-8593** when the app updates and when someone new creates an account. Add Twilio keys in Vercel for reliable SMS (free Textbelt is one text per day).
+Owner texts go to **+1 770-316-8593** when the app updates and when someone new creates an account.
+
+Mail and texts do **not** depend on Twilio. The app tries:
+
+- **Email:** Resend → Brevo → SendGrid → Mailgun → FormSubmit
+- **Text:** Textbelt → carrier email-to-text (AT&T, Verizon, T-Mobile, and others) → Twilio only if you added it
+
+Failed sends sit in a retry box and are flushed every couple of hours, on each deploy, and when someone opens the app. Add a free [Resend](https://resend.com) key in Vercel so carrier texts can reach US phones.
 
 ## Protected storage
 

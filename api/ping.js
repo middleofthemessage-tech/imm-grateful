@@ -1,11 +1,13 @@
 const dbx = require("./_db");
 const sms = require("./_sms");
+const outbox = require("./_outbox");
 
 module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return dbx.send(res, 204, {});
   if (req.method !== "GET" && req.method !== "POST") return dbx.send(res, 405, { ok: false });
   const db = await dbx.load();
   const result = await sms.notifyOwnerUpdate(db);
+  const flushed = await outbox.flushOutbox(db);
   await dbx.save(db);
   return dbx.send(res, 200, {
     ok: true,
@@ -14,5 +16,6 @@ module.exports = async function handler(req, res) {
     skipped: !!result.skipped,
     via: result.via || null,
     error: result.error || null,
+    outbox: flushed,
   });
 };

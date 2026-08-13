@@ -2965,8 +2965,11 @@ a:focus:not(:focus-visible) { outline: none; }
           </section>
           <section class="card">
             <div class="card-head"><h3>Texts to you</h3><span class="muted">+1 · 8593</span></div>
-            <p class="field-note" style="margin-top:0">You get a text when the app updates and when someone new creates an account.</p>
+            <p class="field-note" style="margin-top:0">Texts go out without Twilio: Textbelt first, then a carrier email-to-text. Emails try Resend, Brevo, SendGrid, Mailgun, then FormSubmit. Misses wait in a retry box.</p>
+            <p class="field-note" id="dev-channels">Checking send routes…</p>
             <ul class="log-list" id="dev-sms-log"></ul>
+            <ul class="log-list" id="dev-outbox"></ul>
+            <button type="button" class="btn-ghost full" id="dev-retry-outbox" style="margin-top:8px">Retry pending mail &amp; texts</button>
           </section>
           <section class="card">
             <div class="card-head"><h3>Live activity</h3><span class="muted" id="dev-live-at">Waiting…</span></div>
@@ -5821,6 +5824,21 @@ a:focus:not(:focus-visible) { outline: none; }
         smsList.innerHTML = (data.smsLog || []).slice(0, 8).map((e) =>
           `<li><span class="log-dot"></span><div><div class="log-label">${escapeHtml(e.error ? "Text failed" : "Text sent")}</div><div class="log-meta">${escapeHtml(e.text || "")} · ${escapeHtml((e.at || "").replace("T", " ").slice(0, 16))}</div></div></li>`
         ).join("") || '<li class="log-empty">No owner texts yet</li>';
+      }
+      const box = data.outbox || {};
+      const ch = $("#dev-channels");
+      if (ch) {
+        const mailVia = (box.mail || []).join(", ") || "formsubmit";
+        const smsVia = (box.sms || []).join(", ") || "textbelt, carrier-email";
+        ch.textContent = (box.pending ? box.pending + " waiting to send. " : "No pending sends. ") +
+          "Mail: " + mailVia + ". Texts: " + smsVia +
+          (box.transactionalMail ? "." : ". Add a free Resend key so carrier texts can reach phones.");
+      }
+      const ob = $("#dev-outbox");
+      if (ob) {
+        ob.innerHTML = (box.recent || []).slice(0, 8).map((e) =>
+          `<li><span class="log-dot"></span><div><div class="log-label">${escapeHtml(e.kind)} · ${escapeHtml(e.status)}</div><div class="log-meta">${escapeHtml(e.to || "")} · ${escapeHtml(e.via || e.lastError || "")} · try ${escapeHtml(String(e.tries || 0))}</div></div></li>`
+        ).join("") || "";
       }
     } catch (e) {
       if (note) note.textContent = "Live store is waking up. Try Refresh now.";
@@ -9115,6 +9133,13 @@ a:focus:not(:focus-visible) { outline: none; }
     $("#go-track")?.addEventListener("click", () => showTab("track"));
     $("#dev-peek-close")?.addEventListener("click", () => { const p = $("#dev-peek"); if (p) p.hidden = true; });
     $("#dev-refresh")?.addEventListener("click", () => refreshDevDashboard());
+    $("#dev-retry-outbox")?.addEventListener("click", async () => {
+      try {
+        await fetch("/api/ping", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      } catch (e) {}
+      refreshDevDashboard();
+      toast("Tried pending mail and texts again");
+    });
     $("#dev-copy-link")?.addEventListener("click", async () => {
       const url = "https://imm-grateful.vercel.app/";
       try { await navigator.clipboard.writeText(url); toast("Live link copied"); }
