@@ -560,6 +560,8 @@ body:has(#screen-auth.active) .corner-mark {
 
 /* Role-based visibility */
 body.role-limb .parent-only { display: none !important; }
+body.role-limb #modal-watch-alert,
+body.is-guest #modal-watch-alert { display: none !important; }
 body.role-limb .tab-bar .tab { flex: 1; }
 body.role-limb .app-header .header-brand span:not(.sr) { font-size: 14px; }
 
@@ -3246,7 +3248,7 @@ a:focus:not(:focus-visible) { outline: none; }
     </div>
 
     <!-- Parent inbox (Limb summaries) -->
-    <div class="modal-overlay" id="modal-watch-alert" hidden>
+    <div class="modal-overlay parent-only" id="modal-watch-alert" hidden>
       <div class="modal sheet">
         <div class="modal-head">
           <div>
@@ -4614,7 +4616,7 @@ a:focus:not(:focus-visible) { outline: none; }
       } else {
         setTimeout(() => maybeShowPumpTipPopup(), 400);
       }
-      if (account.role !== "limb") setTimeout(() => maybeShowWatchAlert(), 900);
+      if (account.role === "parent") setTimeout(() => maybeShowWatchAlert(), 900);
     });
   }
   async function createParentAccountFromForm() {
@@ -4979,7 +4981,7 @@ a:focus:not(:focus-visible) { outline: none; }
         if (typeof renderCareReminders === "function") renderCareReminders();
         if (typeof renderAppointments === "function") renderAppointments();
       } catch (e) {}
-      if (account.role !== "limb") setTimeout(() => maybeShowWatchAlert(), 900);
+      if (account.role === "parent") setTimeout(() => maybeShowWatchAlert(), 900);
     });
     return true;
   }
@@ -6062,7 +6064,14 @@ a:focus:not(:focus-visible) { outline: none; }
     return h;
   }
   function isLimbRole() {
-    return (document.body.dataset.role || currentAccount && currentAccount.role) === "limb";
+    if (currentAccount && currentAccount.role === "limb") return true;
+    if (document.body.dataset.role === "limb") return true;
+    return false;
+  }
+  function isParentAccount() {
+    if (!currentAccount || document.body.classList.contains("is-guest")) return false;
+    if (currentAccount.role === "limb" || document.body.dataset.role === "limb") return false;
+    return currentAccount.role === "parent" || document.body.dataset.role === "parent";
   }
   function syncHouseholdFromParent() {
     if (isLimbRole()) return;
@@ -7953,6 +7962,7 @@ a:focus:not(:focus-visible) { outline: none; }
   }
 
   function openInbox() {
+    if (!isParentAccount()) return;
     const body = $("#inbox-body");
     if (!body) return;
     if (!parentInbox.length) {
@@ -8008,7 +8018,7 @@ a:focus:not(:focus-visible) { outline: none; }
       html += `<div class="care-doc-section"><h4>Notes</h4><div class="care-doc-main">${escapeHtml(item.note)}</div></div>`;
     }
     html += `<div class="care-doc-stamp">Accountability snapshot · In the Middle of the [Mess]age</div>`;
-    if (!isLimbRole()) {
+    if (isParentAccount()) {
       html += `<div class="settings-sec" style="margin-top:16px">Limb care updates</div>
         <p class="field-note" style="margin-top:0">Now: ${escapeHtml(limbUpdateModeLabel(currentLimbUpdateMode()))}. Change anytime.</p>
         <div class="chip-row wrap" id="inbox-update-chips">${limbUpdateChipsHtml()}</div>`;
@@ -8026,9 +8036,13 @@ a:focus:not(:focus-visible) { outline: none; }
   }
 
   function openWatchAlert(shift) {
-    if (isLimbRole() || document.body.classList.contains("is-guest")) return;
+    if (!isParentAccount()) {
+      closeModal("watch-alert");
+      return;
+    }
     const s = shift || (loadHousehold().activeShift);
     if (!s) return;
+    if (currentAccount && s.limbId && s.limbId === currentAccount.id) return;
     const who = s.limbName || s.from || "A Limb";
     const kids = (s.childNames && s.childNames.length) ? s.childNames.join(", ") : (typeof displayChildName === "function" ? displayChildName({ formal: true }) : "your child");
     const when = s.startedAt || s.start || s.sentAt || "";
@@ -8048,15 +8062,23 @@ a:focus:not(:focus-visible) { outline: none; }
     openModal("watch-alert");
   }
   function saveWatchAlertChoice() {
+    if (!isParentAccount()) {
+      closeModal("watch-alert");
+      return;
+    }
     const picked = $("#watch-update-chips .date-chip.active")?.dataset?.upd;
     if (picked) setLimbUpdateMode(picked);
     closeModal("watch-alert");
   }
   function maybeShowWatchAlert() {
-    if (isLimbRole() || document.body.classList.contains("is-guest") || !currentAccount) return;
+    if (!isParentAccount()) {
+      closeModal("watch-alert");
+      return;
+    }
     const h = loadHousehold();
     const s = h.activeShift && !h.activeShift.endedAt ? h.activeShift : null;
     if (!s) return;
+    if (currentAccount && s.limbId && s.limbId === currentAccount.id) return;
     let seen = {};
     try { seen = JSON.parse(sessionStorage.getItem("mh_watch_seen") || "{}"); } catch (e) {}
     if (seen[s.id]) return;
@@ -9322,7 +9344,10 @@ a:focus:not(:focus-visible) { outline: none; }
       if (isLimbRole() && limbCanTrack()) checkMissedCareTasks();
     }, 60000);
     setInterval(() => {
-      if (isLimbRole() || !currentAccount) return;
+      if (!isParentAccount()) {
+        closeModal("watch-alert");
+        return;
+      }
       maybeShowWatchAlert();
       if (typeof pullVault === "function" && cloudToken) {
         pullVault().then(() => maybeShowWatchAlert()).catch(() => {});
