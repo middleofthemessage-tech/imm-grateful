@@ -24,6 +24,6 @@
     }
   ],
   "rewrites": [
-    { "source": "/((?!favicon\\.svg|logo-main\\.jpg|manifest\\.json|robots\\.txt|sitemap\\.xml|404\\.html).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|favicon\\.svg|logo-main\\.jpg|manifest\\.json|robots\\.txt|sitemap\\.xml|404\\.html).*)", "destination": "/index.html" }
   ]
 }

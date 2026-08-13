@@ -2741,7 +2741,7 @@ a:focus:not(:focus-visible) { outline: none; }
             <div class="recalls-head">
               <div>
                 <h3 class="recalls-title">Safety Recalls</h3>
-                <p class="recalls-sub">Baby &amp; child products · CPSC SaferProducts</p>
+                <p class="recalls-sub">Baby &amp; child products · CPSC · SaferProducts · FDA</p>
               </div>
               <span class="recalls-live-dot" title="Loading latest CPSC recalls…">Updating…</span>
             </div>
@@ -3599,8 +3599,12 @@ a:focus:not(:focus-visible) { outline: none; }
   // Safety recalls — live CPSC SaferProducts API + curated baby/child fallback
   // API: https://www.saferproducts.gov/RestWebServices/Recall?format=json
   const RECALL_API_BASE = "https://www.saferproducts.gov/RestWebServices/Recall";
-  const RECALL_CACHE_KEY = "mh_recalls_cache_v2";
-  const RECALL_CACHE_MS = 6 * 60 * 60 * 1000; // 6 hours
+  const RECALL_CACHE_KEY = "mh_recalls_cache_v3";
+  const RECALL_CACHE_MS = 3 * 60 * 60 * 1000; // 3 hours
+  const FDA_FOOD_API = "https://api.fda.gov/food/enforcement.json";
+  const CPSC_RECALLS_PAGE = "https://www.cpsc.gov/Recalls";
+  const SAFERPRODUCTS_PAGE = "https://www.saferproducts.gov/";
+  const FDA_RECALLS_PAGE = "https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts";
   let recallsLive = false;
   let recallsLastFetched = null;
 
@@ -3871,23 +3875,59 @@ a:focus:not(:focus-visible) { outline: none; }
     const el = document.querySelector(".recalls-live-dot");
     if (!el) return;
     if (recallsLive) {
-      el.textContent = "Live CPSC";
-      el.title = "Fetched from CPSC SaferProducts API" + (recallsLastFetched ? " · " + new Date(recallsLastFetched).toLocaleString() : "");
+      el.textContent = "Live CPSC + FDA";
+      el.title = "Fetched from CPSC SaferProducts, cpsc.gov/Recalls, and FDA" + (recallsLastFetched ? " · " + new Date(recallsLastFetched).toLocaleString() : "");
       el.style.background = "#2d6b4a";
+      el.style.color = "#fff";
     } else {
-      el.textContent = "Curated + CPSC";
+      el.textContent = "Official sources";
       el.title = "Showing curated recent baby/child recalls. Live fetch unavailable or pending.";
     }
     const foot = document.querySelector(".recalls-footnote");
     if (foot) {
       foot.innerHTML = recallsLive
-        ? 'Live data from <a href="https://www.saferproducts.gov/" target="_blank" rel="noopener">CPSC SaferProducts</a> · filtered for infant, baby, toddler &amp; child products. Always verify on <a href="https://www.cpsc.gov/Recalls" target="_blank" rel="noopener">cpsc.gov/Recalls</a>.'
-        : 'Showing recent baby &amp; child safety notices. Open <a href="https://www.cpsc.gov/Recalls" target="_blank" rel="noopener">cpsc.gov/Recalls</a> for the full official list.';
+        ? 'Live from <a href="https://www.saferproducts.gov/" target="_blank" rel="noopener">SaferProducts.gov</a>, <a href="https://www.cpsc.gov/Recalls" target="_blank" rel="noopener">cpsc.gov/Recalls</a>, and <a href="https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts" target="_blank" rel="noopener">FDA recalls</a>. Filtered for infant, baby, toddler &amp; child products. Always verify on the official notice.'
+        : 'Showing recent baby &amp; child safety notices. Check <a href="https://www.cpsc.gov/Recalls" target="_blank" rel="noopener">cpsc.gov/Recalls</a>, <a href="https://www.saferproducts.gov/" target="_blank" rel="noopener">SaferProducts.gov</a>, and <a href="https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts" target="_blank" rel="noopener">FDA</a> for the full official lists.';
     }
   }
 
+  function mapFdaRecall(item) {
+    const desc = item.product_description || item.reason_for_recall || "FDA recall";
+    const title = String(item.product_description || "FDA product recall").split("\n")[0].slice(0, 120);
+    const classified = classifyHazard(desc + " " + (item.reason_for_recall || ""));
+    const raw = String(item.report_date || item.recall_initiation_date || "");
+    const iso = raw.length === 8 ? raw.slice(0, 4) + "-" + raw.slice(4, 6) + "-" + raw.slice(6, 8) : raw.slice(0, 10);
+    let label = iso;
+    try {
+      if (iso) label = new Date(iso + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    } catch (e) {}
+    return {
+      id: "fda-" + (item.recall_number || title),
+      source: "FDA",
+      sourceUrl: FDA_RECALLS_PAGE,
+      product: title,
+      title,
+      hazard: classified.hazard,
+      hazardLabel: item.classification || classified.hazardLabel,
+      category: classified.category === "gear" ? "feeding" : classified.category,
+      urgent: /class i/i.test(item.classification || "") || /death|infant|botulism|cronobacter/i.test(desc),
+      date: iso || "1970-01-01",
+      dateLabel: label || "Recent",
+      location: [item.city, item.state].filter(Boolean).join(", ") || item.recalling_firm || "See FDA notice",
+      units: item.product_quantity || "See notice",
+      description: item.reason_for_recall || desc,
+      remedy: "Do not use. Follow the official FDA recall notice.",
+      soldAt: item.recalling_firm || "See notice",
+    };
+  }
+
+  async function fetchJsonSafe(url) {
+    const res = await fetch(url, { method: "GET" });
+    if (!res.ok) throw new Error("bad status " + res.status);
+    return res.json();
+  }
+
   async function fetchLiveRecalls() {
-    // Cache
     try {
       const cached = JSON.parse(localStorage.getItem(RECALL_CACHE_KEY) || "null");
       if (cached && cached.at && Date.now() - cached.at < RECALL_CACHE_MS && Array.isArray(cached.items) && cached.items.length) {
@@ -3897,45 +3937,70 @@ a:focus:not(:focus-visible) { outline: none; }
         updateRecallsLiveBadge();
         renderRecalls();
         renderHomeUrgentBanner();
-        if (cached.live && Date.now() - cached.at < RECALL_CACHE_MS) return; // still refresh in background if old
+        if (cached.live && Date.now() - cached.at < RECALL_CACHE_MS / 2) return;
       }
     } catch (e) {}
 
-    const queries = [
-      RECALL_API_BASE + "?format=json&RecallTitle=infant",
-      RECALL_API_BASE + "?format=json&RecallTitle=baby",
-      RECALL_API_BASE + "?format=json&ProductName=Toddler",
-      RECALL_API_BASE + "?format=json&RecallTitle=Child",
-      RECALL_API_BASE + "?format=json&ProductName=Crib",
-    ];
-
     const byId = new Map();
     let anyOk = false;
+    const since = new Date();
+    since.setMonth(since.getMonth() - 24);
+    const dateStart = since.toISOString().slice(0, 10);
 
-    await Promise.all(
-      queries.map(async (url) => {
-        try {
-          const res = await fetch(url, { method: "GET", mode: "cors" });
-          if (!res.ok) return;
-          const data = await res.json();
-          const arr = Array.isArray(data) ? data : [];
+    try {
+      const data = await fetchJsonSafe("/api/recalls");
+      if (data && Array.isArray(data.items) && data.items.length) {
+        data.items.forEach((item) => {
+          if (item && item.id && !byId.has(item.id)) byId.set(item.id, item);
+        });
+        anyOk = true;
+      }
+    } catch (e) {}
+
+    if (!byId.size) {
+      const queries = [
+        RECALL_API_BASE + "?format=json&RecallDateStart=" + dateStart + "&RecallTitle=infant",
+        RECALL_API_BASE + "?format=json&RecallDateStart=" + dateStart + "&RecallTitle=baby",
+        RECALL_API_BASE + "?format=json&RecallDateStart=" + dateStart + "&ProductName=Toddler",
+        RECALL_API_BASE + "?format=json&RecallDateStart=" + dateStart + "&RecallTitle=Child",
+        RECALL_API_BASE + "?format=json&RecallDateStart=" + dateStart + "&ProductName=Crib",
+      ];
+      const proxied = queries.flatMap((url) => [
+        url,
+        "https://api.allorigins.win/raw?url=" + encodeURIComponent(url),
+      ]);
+      await Promise.all(
+        proxied.map(async (url) => {
+          try {
+            const data = await fetchJsonSafe(url);
+            const arr = Array.isArray(data) ? data : [];
+            if (!arr.length) return;
+            anyOk = true;
+            arr.forEach((item) => {
+              if (!isBabyChildRecall(item)) return;
+              const mapped = mapApiRecall(item);
+              if (!byId.has(mapped.id)) byId.set(mapped.id, mapped);
+            });
+          } catch (e) {}
+        })
+      );
+      try {
+        const q = encodeURIComponent("product_description:(infant OR baby OR toddler OR formula)");
+        const fda = await fetchJsonSafe(FDA_FOOD_API + "?search=" + q + "&limit=25&sort=report_date:desc");
+        (fda.results || []).forEach((item) => {
+          const blob = (item.product_description || "") + " " + (item.reason_for_recall || "");
+          if (!/infant|baby|toddler|child|formula/i.test(blob)) return;
+          const mapped = mapFdaRecall(item);
+          if (!byId.has(mapped.id)) byId.set(mapped.id, mapped);
           anyOk = true;
-          arr.forEach((item) => {
-            if (!isBabyChildRecall(item)) return;
-            const mapped = mapApiRecall(item);
-            if (!byId.has(mapped.id)) byId.set(mapped.id, mapped);
-          });
-        } catch (e) {
-          /* CORS or network — keep fallback */
-        }
-      })
-    );
+        });
+      } catch (e) {}
+    }
 
     if (byId.size) {
-      const list = Array.from(byId.values()).sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 40);
-      // Ensure critical curated items stay visible
+      const list = Array.from(byId.values()).sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 50);
       FALLBACK_RECALLS.forEach((f) => {
-        if (!list.some((x) => x.product === f.product || x.id === f.id)) list.push(f);
+        if (f.id === "safe-sleep-reminder" && !list.some((x) => x.id === f.id)) list.push(f);
       });
       list.sort((a, b) => (a.date < b.date ? 1 : -1));
       RECALLS = list;
