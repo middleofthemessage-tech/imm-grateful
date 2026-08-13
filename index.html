@@ -2664,9 +2664,17 @@ a:focus:not(:focus-visible) { outline: none; }
             <button type="button" class="date-chip active" data-prole="mom">Mom</button>
             <button type="button" class="date-chip" data-prole="dad">Dad / Co-parent</button>
           </div>
-          <label class="field-label" for="su-join-code">Household invite code <span class="field-hint">(optional · joining as the second parent)</span></label>
-          <input class="field-input" id="su-join-code" type="text" maxlength="24" placeholder="e.g. MM-ABC123" autocomplete="off" />
-          <p class="field-note">Leave blank to start a new home. If mom or dad already has IMM, enter their Village invite code so you share tracking, reminders, and the calendar.</p>
+          <label class="field-label">Connect to another parent?</label>
+          <div class="chip-row wrap" id="su-home-chips">
+            <button type="button" class="date-chip active" data-home="new">Start my own home</button>
+            <button type="button" class="date-chip" data-home="join">Connect to mom / dad’s home</button>
+          </div>
+          <div id="su-join-wrap" hidden>
+            <label class="field-label" for="su-join-code">Their household invite code <span class="auth-req">*</span></label>
+            <input class="field-input" id="su-join-code" type="text" maxlength="24" placeholder="e.g. MM-ABC123" autocomplete="off" />
+            <p class="field-note">Ask them for the code in Settings → Connect another parent, or Village. You will share tracking, calendar, reminders, and Villager info.</p>
+          </div>
+          <p class="field-note" id="su-home-note">Starting a new home. You can still connect a second parent later in Settings.</p>
 
           <p class="auth-step-label">3 · About your little one</p>
           <label class="field-label" for="su-child-name">Child's name <span class="field-hint">(optional)</span></label>
@@ -4728,6 +4736,7 @@ a:focus:not(:focus-visible) { outline: none; }
     const scriptureTime = $("#su-scripture-time")?.value || "15:00";
     const trackingEnabled = $("#su-tracking")?.classList.contains("on") ?? true;
     const limbUpdateMode = normalizeLimbUpdateMode($("#su-update-chips .date-chip.active")?.dataset?.upd || "endshift");
+    const joinHome = $("#su-home-chips .date-chip.active")?.dataset?.home === "join";
 
     if (!firstName) return showAuthError("signup-error", "First name is required.");
     if (!isValidEmail(email)) return showAuthError("signup-error", "Enter a valid email address.");
@@ -4741,6 +4750,7 @@ a:focus:not(:focus-visible) { outline: none; }
     try {
       const { hash, salt } = await hashPassword(password);
       const joinCode = ($("#su-join-code")?.value || "").trim().toUpperCase();
+      if (joinHome && !joinCode) return showAuthError("signup-error", "Enter the other parent’s household invite code, or choose Start my own home.");
       let homeId = null;
       if (joinCode) {
         const remote = await lookupInviteCloud(joinCode);
@@ -4801,25 +4811,8 @@ a:focus:not(:focus-visible) { outline: none; }
       rememberContact(email || phone);
       const cloud = await cloudSignup(account, password);
       if (joinCode) {
-        try {
-          const joined = await fetch("/api/account", {
-            method: "POST",
-            headers: cloudHeaders(),
-            body: JSON.stringify({ action: "parent-join", inviteCode: joinCode }),
-          }).then((r) => r.json());
-          if (joined && joined.ok) {
-            if (joined.shared) applySharedCare(joined.shared);
-            if (Array.isArray(joined.village)) profile.village = joined.village;
-            if (Array.isArray(joined.children) && joined.children.length) {
-              profile.children = joined.children;
-              syncActiveChildToLegacy();
-            }
-            profile.inviteCode = joinCode;
-            profile.householdId = joined.householdId || homeId;
-            saveProfile();
-            saveAppData();
-          }
-        } catch (e) {}
+        const joined = await connectToHousehold(joinCode);
+        if (!joined.ok) return showAuthError("signup-error", joined.error || "Could not connect to that home.");
       }
       await registerInviteCloud(profile.inviteCode, loadHousehold());
       await pushVault();
@@ -5180,6 +5173,19 @@ a:focus:not(:focus-visible) { outline: none; }
       c.addEventListener("click", () => {
         $$("#su-role-chips .date-chip").forEach((x) => x.classList.remove("active"));
         c.classList.add("active");
+      });
+    });
+    $$("#su-home-chips .date-chip").forEach((c) => {
+      c.addEventListener("click", () => {
+        $$("#su-home-chips .date-chip").forEach((x) => x.classList.remove("active"));
+        c.classList.add("active");
+        const join = c.dataset.home === "join";
+        const wrap = $("#su-join-wrap");
+        if (wrap) wrap.hidden = !join;
+        const note = $("#su-home-note");
+        if (note) note.textContent = join
+          ? "You’ll share tracking, reminders, calendar, and Villager activity with that home."
+          : "Starting a new home. You can still connect a second parent later in Settings.";
       });
     });
     $$("#su-feeding .multi-chip").forEach((chip) => {
@@ -6270,6 +6276,7 @@ a:focus:not(:focus-visible) { outline: none; }
       appointments: typeof appointments !== "undefined" ? appointments : [],
       careReminders: typeof careReminders !== "undefined" ? careReminders : [],
       children: typeof getChildren === "function" ? getChildren() : (profile && profile.children) || [],
+      village: profile && Array.isArray(profile.village) ? profile.village : [],
       updatedAt: new Date().toISOString(),
       updatedBy: currentAccount && currentAccount.id,
     };
@@ -6283,6 +6290,50 @@ a:focus:not(:focus-visible) { outline: none; }
       profile.children = shared.children;
       if (typeof syncActiveChildToLegacy === "function") syncActiveChildToLegacy();
     }
+    if (Array.isArray(shared.village) && profile) profile.village = shared.village;
+  }
+  async function connectToHousehold(code) {
+    const c = String(code || "").trim().toUpperCase();
+    if (!c) return { ok: false, error: "Enter the other parent’s invite code." };
+    if (!cloudToken) return { ok: false, error: "Sign in first, then try Connect again." };
+    const res = await fetch("/api/account", {
+      method: "POST",
+      headers: cloudHeaders(),
+      body: JSON.stringify({ action: "parent-join", inviteCode: c }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!data || !data.ok) return { ok: false, error: (data && data.error) || "Could not connect that home." };
+    if (currentAccount) {
+      currentAccount.householdId = data.householdId || data.parentId;
+      currentAccount.inviteCode = data.inviteCode || c;
+      const all = loadAccounts();
+      const ix = all.findIndex((a) => a.id === currentAccount.id);
+      if (ix >= 0) {
+        all[ix].householdId = currentAccount.householdId;
+        all[ix].inviteCode = currentAccount.inviteCode;
+        saveAccounts(all);
+      }
+    }
+    profile.householdId = data.householdId || data.parentId;
+    profile.inviteCode = data.inviteCode || c;
+    if (Array.isArray(data.village)) profile.village = data.village;
+    if (Array.isArray(data.children) && data.children.length) {
+      profile.children = data.children;
+      if (typeof syncActiveChildToLegacy === "function") syncActiveChildToLegacy();
+    }
+    if (data.household && profile.householdId) {
+      try { localStorage.setItem("mh_household_" + profile.householdId, JSON.stringify(data.household)); } catch (e) {}
+    }
+    if (data.shared) applySharedCare(data.shared);
+    saveProfile();
+    if (typeof saveAppData === "function") saveAppData();
+    try {
+      if (typeof renderLogs === "function") renderLogs();
+      if (typeof renderCareReminders === "function") renderCareReminders();
+      if (typeof renderAppointments === "function") renderAppointments();
+      if (typeof updateVillageUI === "function") updateVillageUI();
+    } catch (e) {}
+    return data;
   }
   function persistSharedCare() {
     const h = loadHousehold();
@@ -7516,6 +7567,9 @@ a:focus:not(:focus-visible) { outline: none; }
   function renderSettings() {
     const body = $("#settings-body");
     if (!body) return;
+    if (!isLimbRole() && typeof ensureInviteCode === "function") {
+      try { ensureInviteCode(); } catch (e) {}
+    }
     const methods = profile.feedingMethods || [];
     const feedChips = FEED_OPTIONS.map(
       (o) =>
@@ -7559,6 +7613,17 @@ a:focus:not(:focus-visible) { outline: none; }
         <button type="button" class="date-chip${profile.parentRole==="dad"?" active":""}" data-prole="dad">Dad / Co-parent</button>
       </div>
       <p class="field-note">Loading greetings use your name, role, and your child’s name.</p>
+      ${isLimbRole() ? "" : `
+      <div class="settings-sec">Connect another parent</div>
+      <p class="field-note" style="margin-top:0">Share one home so both of you see tracking, reminders, calendar, and Villager activity. Each of you keeps your own login.</p>
+      <label class="field-label">Your household invite code</label>
+      <div class="invite-code-box" style="margin-top:6px"><strong id="set-home-code">${escapeHtml((profile.inviteCode || "").toUpperCase() || "—")}</strong></div>
+      <button type="button" class="btn-ghost full" id="set-copy-home-code" style="margin-top:8px">Copy code for the other parent</button>
+      <p class="field-note" id="set-home-members"></p>
+      <label class="field-label" for="set-join-code">Or enter their code</label>
+      <input class="field-input" id="set-join-code" type="text" maxlength="24" placeholder="e.g. MM-ABC123" />
+      <button type="button" class="btn-primary full" id="set-connect-parent" style="margin-top:8px">Connect our accounts</button>
+      `}
       <div class="settings-sec">Font &amp; readability</div>
       <div class="font-option-grid" id="font-options">
         <button type="button" class="font-option${(profile.fontId||"soft")==="soft"?" on":""}" data-font="soft"><strong style="font-family:Nunito,sans-serif">Soft rounded</strong><small>Nunito — warm &amp; friendly</small></button>
@@ -7870,6 +7935,38 @@ a:focus:not(:focus-visible) { outline: none; }
     const nEl = $("#set-account-name"); if (nEl) nEl.textContent = accName;
     const eEl = $("#set-account-email"); if (eEl) eEl.textContent = document.body.classList.contains("is-guest") ? "Not signed in" : accEmail;
     const pEl = $("#set-account-phone"); if (pEl) pEl.textContent = document.body.classList.contains("is-guest") ? "—" : accPhone;
+    const memEl = $("#set-home-members");
+    if (memEl) {
+      const h = loadHousehold();
+      const members = (h.members || []).filter((m) => m.role === "parent");
+      const hid = householdId();
+      const linked = !!(hid && currentAccount && hid !== currentAccount.id) || members.length > 1;
+      memEl.textContent = linked
+        ? "This home is connected. Tracking, calendar, reminders, and Villagers stay in sync."
+        : "Not connected to another parent yet. Send them your code, or enter theirs.";
+    }
+    $("#set-copy-home-code")?.addEventListener("click", async () => {
+      const code = (profile.inviteCode || "").toUpperCase();
+      if (!code) { toast("No invite code yet"); return; }
+      try { await navigator.clipboard.writeText(code); toast("Code copied · send it to the other parent"); }
+      catch (e) { toast(code); }
+    });
+    $("#set-connect-parent")?.addEventListener("click", async () => {
+      const btn = $("#set-connect-parent");
+      if (btn) { btn.disabled = true; btn.textContent = "Connecting…"; }
+      try {
+        const data = await connectToHousehold($("#set-join-code")?.value);
+        if (!data.ok) toast(data.error || "Could not connect");
+        else {
+          toast("Accounts connected · tracking, calendar, and Villagers are shared");
+          renderSettings();
+        }
+      } catch (e) {
+        toast("Could not connect");
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = "Connect our accounts"; }
+      }
+    });
     $("#set-guest-create")?.addEventListener("click", () => {
       closeModal("settings");
       showAuthError("signup-error", "");
