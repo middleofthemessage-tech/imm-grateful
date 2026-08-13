@@ -63,6 +63,7 @@ module.exports = async function handler(req, res) {
       }
       existing.lastSeen = new Date().toISOString();
       if (dbx.isDevPhone(existing.phone)) existing.developer = true;
+      if (body.parentRole === "dad" || body.parentRole === "mom") existing.parentRole = body.parentRole;
       const token = dbx.newToken();
       db.sessions.push({ token, accountId: existing.id, exp: Date.now() + 90 * 86400000 });
       dbx.recordLogin(db, existing, "resume");
@@ -82,6 +83,7 @@ module.exports = async function handler(req, res) {
       developer: dbx.isDevPhone(phone),
       householdId: body.householdId || null,
       inviteCode: inviteCodeOf(body.inviteCode) || null,
+      parentRole: body.role === "limb" ? "limb" : (body.parentRole === "dad" ? "dad" : "mom"),
       createdAt: new Date().toISOString(),
       lastSeen: new Date().toISOString(),
     };
@@ -131,6 +133,7 @@ module.exports = async function handler(req, res) {
     }
     user.lastSeen = new Date().toISOString();
     if (dbx.isDevPhone(user.phone)) user.developer = true;
+    if (body.parentRole === "dad" || body.parentRole === "mom") user.parentRole = body.parentRole;
     const token = dbx.newToken();
     db.sessions.push({ token, accountId: user.id, exp: Date.now() + 90 * 86400000 });
     db.sessions = db.sessions.filter((s) => s.exp > Date.now()).slice(-200);

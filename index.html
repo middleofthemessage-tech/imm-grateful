@@ -1505,6 +1505,18 @@ html.theme-dark .loading-dots span {
   font-weight: 700;
   color: var(--sage-dark);
 }
+.header-brand-text { min-width: 0; }
+.header-user-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.2;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .header-actions {
   display: flex;
   align-items: center;
@@ -2712,7 +2724,10 @@ a:focus:not(:focus-visible) { outline: none; }
       <header class="app-header">
         <div class="header-brand">
           <img src="clipart/app.jpg" alt="In the Middle of the [Mess]age" class="header-logo-mark" />
-          <span class="header-wordmark">In the Middle of the <b>[Mess]</b>age</span>
+          <div class="header-brand-text">
+            <span class="header-wordmark">In the Middle of the <b>[Mess]</b>age</span>
+            <span class="header-user-name" id="header-user-name"></span>
+          </div>
         </div>
         <div class="header-actions">
           <button class="header-btn" id="btn-calendar" title="Calendar" aria-label="Calendar">📅</button>
@@ -2738,8 +2753,8 @@ a:focus:not(:focus-visible) { outline: none; }
             <div class="home-photo-wrap" id="home-photo-wrap" hidden>
               <img id="home-photo" alt="You & little one" />
             </div>
-            <h1 class="home-greeting">Hello</h1>
-            <p class="home-sub">you're carrying this with such grace today</p>
+            <h1 class="home-greeting" id="home-greeting">Hello</h1>
+            <p class="home-sub" id="home-sub">you're carrying this with such grace today</p>
             <p class="home-date" id="home-date">Wednesday · Welcome to In the Middle of the [Mess]age</p>
           </div>
 
@@ -2779,7 +2794,7 @@ a:focus:not(:focus-visible) { outline: none; }
             </button>
           </div>
 
-          <p class="affirmation">⸙&nbsp;&nbsp;You are more than a mom. You are beloved just as you are.</p>
+          <p class="affirmation" id="home-affirmation">⸙&nbsp;&nbsp;You are more than a mom. You are beloved just as you are.</p>
         </div>
 
         <!-- TRACK -->
@@ -3938,6 +3953,15 @@ a:focus:not(:focus-visible) { outline: none; }
     { title: "Car-seat check", body: "Chest clip at armpit level, harness snug (no extra slack at the collarbone), and no aftermarket inserts that didn’t come with the seat." },
     { title: "You are not only a parent", body: "Two minutes for a part of you that isn’t logistics — a verse, a song, a stretch, a sentence in a book — still counts." },
   ];
+  const DAILY_TIPS_DAD = [
+    { title: "Show up, then stay", body: "Ten undistracted minutes with your child — phone in another room — teaches them they have your full attention." },
+    { title: "Safe sleep check", body: "Alone, on their Back, in a bare Crib. Soft bedding, bumpers, and inclined sleepers stay out of the sleep space." },
+    { title: "Take a shift on purpose", body: "Offer a concrete window: “I’ve got bedtime” or “I’ve got the 2 a.m. wake.” Specific help is love they can feel." },
+    { title: "One-handed reset", body: "When the day frays, pick one 90-second reset: wash your face, open a window, or eat something with protein." },
+    { title: "Ask like a teammate", body: "Text one person a specific ask (“Can you take the baby 20 minutes so I can shower?”). Vague “let me know” rarely lands." },
+    { title: "Car-seat check", body: "Chest clip at armpit level, harness snug (no extra slack at the collarbone), and no aftermarket inserts that didn’t come with the seat." },
+    { title: "You are not only a dad", body: "Two minutes for a part of you that isn’t logistics — a verse, a walk, a stretch, a sentence in a book — still counts." },
+  ];
 
   const INTEREST_OPTIONS = [
     { id: "faith", label: "Faith" },
@@ -4567,7 +4591,9 @@ a:focus:not(:focus-visible) { outline: none; }
     profile.email = account.email || "";
     profile.phone = account.phone || "";
     profile.accountRole = account.role || "parent";
-    if (account.parentRole) profile.parentRole = account.parentRole;
+    if (account.parentRole === "dad" || account.parentRole === "mom" || account.parentRole === "limb") {
+      profile.parentRole = account.parentRole;
+    }
   }
   function enterAppAs(account, opts) {
     opts = opts || {};
@@ -4577,6 +4603,7 @@ a:focus:not(:focus-visible) { outline: none; }
     PROFILE_KEY = profileKeyFor(account.id);
     profile = loadProfile();
     applyAccountToProfile(account);
+    if (account.role !== "limb") profile.onboarded = true;
     if (opts.seedProfile) {
       Object.assign(profile, opts.seedProfile);
       if (opts.seedProfile.childName !== undefined || opts.seedProfile.birthday || opts.seedProfile.feedingMethods) {
@@ -4613,8 +4640,9 @@ a:focus:not(:focus-visible) { outline: none; }
       applyDeveloperUI();
       pullVault();
       updateHomeDateLine();
-      const greet = profile.userName || account.firstName || "friend";
-      toast("Welcome" + (greet ? ", " + greet : ""));
+      refreshHomeGreeting();
+      const greet = accountHolderFirstName();
+      toast(greet ? "Welcome, " + greet : "Welcome");
       try {
         renderLogs(); // clean account
         renderMilestones();
@@ -4625,16 +4653,10 @@ a:focus:not(:focus-visible) { outline: none; }
         if (typeof renderCareReminders === "function") renderCareReminders();
         if (typeof renderAppointments === "function") renderAppointments();
       } catch (e) {}
-      const homeGreet = document.querySelector(".home-greeting");
-      if (homeGreet) homeGreet.textContent = "Hello " + (greet || "there");
       if (account.role !== "limb") {
         try { ensureInviteCode(); updateVillageUI(); } catch (e) {}
       }
-      if (account.role !== "limb" && !profile.onboarded && !opts.seedProfile) {
-        setTimeout(() => openOnboarding(), 350);
-      } else {
-        setTimeout(() => maybeShowPumpTipPopup(), 400);
-      }
+      setTimeout(() => maybeShowPumpTipPopup(), 400);
       if (account.role === "parent") setTimeout(() => maybeShowWatchAlert(), 900);
     });
   }
@@ -4955,8 +4977,7 @@ a:focus:not(:focus-visible) { outline: none; }
         if (typeof renderCareReminders === "function") renderCareReminders();
         if (typeof renderAppointments === "function") renderAppointments();
       } catch (e) {}
-      const homeGreet = document.querySelector(".home-greeting");
-      if (homeGreet) homeGreet.textContent = "Hello" + (profile.userName ? " " + profile.userName : "");
+      refreshHomeGreeting();
       toast("Preview mode · saved on this device");
     };
     if (opts.skipLoading) go();
@@ -4977,6 +4998,7 @@ a:focus:not(:focus-visible) { outline: none; }
     PROFILE_KEY = profileKeyFor(account.id);
     profile = loadProfile();
     applyAccountToProfile(account);
+    if (account.role !== "limb") profile.onboarded = true;
     document.body.dataset.role = account.role === "limb" ? "limb" : "parent";
     try { cloudToken = localStorage.getItem("mh_cloud_token") || sessionStorage.getItem("mh_cloud_token") || ""; } catch (e) {}
     applyAppData(loadAppData());
@@ -4988,9 +5010,7 @@ a:focus:not(:focus-visible) { outline: none; }
       applyDeveloperUI();
       pullVault();
       updateHomeDateLine();
-      const greet = profile.userName || account.firstName || "";
-      const homeGreet = document.querySelector(".home-greeting");
-      if (homeGreet) homeGreet.textContent = "Hello " + (greet || "there");
+      refreshHomeGreeting();
       if (account.role !== "limb") {
         try { ensureInviteCode(); updateVillageUI(); } catch (e) {}
       }
@@ -5201,7 +5221,43 @@ a:focus:not(:focus-visible) { outline: none; }
     return formal ? "Child" : "your little one";
   }
   function parentRoleWord() {
-    return profile.parentRole === "dad" ? "dad" : "mom";
+    return isDadRole() ? "dad" : "mom";
+  }
+  function isDadRole() {
+    if (isLimbRole()) return false;
+    return profile.parentRole === "dad" || (currentAccount && currentAccount.parentRole === "dad");
+  }
+  function accountHolderFirstName() {
+    const raw = (
+      (currentAccount && currentAccount.firstName) ||
+      profile.userName ||
+      profile.firstName ||
+      ""
+    ).trim();
+    return raw ? raw.split(/\s+/)[0] : "";
+  }
+  function refreshHomeGreeting() {
+    const name = accountHolderFirstName();
+    const greet = $("#home-greeting") || document.querySelector(".home-greeting");
+    if (greet) greet.textContent = name ? "Hello, " + name : "Hello";
+    const head = $("#header-user-name");
+    if (head) head.textContent = name || "";
+    const sub = $("#home-sub") || document.querySelector(".home-sub");
+    const aff = $("#home-affirmation") || document.querySelector(".affirmation");
+    if (sub) {
+      sub.textContent = isLimbRole()
+        ? "thank you for showing up for this family today"
+        : isDadRole()
+          ? "your presence is holding this home today"
+          : "you're carrying this with such grace today";
+    }
+    if (aff) {
+      aff.innerHTML = isLimbRole()
+        ? "⸙&nbsp;&nbsp;Your help is part of this village. You are appreciated."
+        : isDadRole()
+          ? "⸙&nbsp;&nbsp;You are more than a provider. You are a dad they will remember."
+          : "⸙&nbsp;&nbsp;You are more than a mom. You are beloved just as you are.";
+    }
   }
   function displayChildAddress() {
     const mode = profile.childAddress || "name";
@@ -5218,8 +5274,9 @@ a:focus:not(:focus-visible) { outline: none; }
     return "your blessing";
   }
   function welcomeLine() {
-    const name = (typeof getUserFirstName === "function" ? getUserFirstName() : "") || "friend";
-    if (isLimbRole()) return "Welcome " + name;
+    const name = accountHolderFirstName();
+    if (isLimbRole()) return name ? "Welcome " + name : "Welcome";
+    if (!name) return "Welcome back";
     return "Welcome " + name + ", " + parentRoleWord() + " of " + displayChildAddress();
   }
   function displayChildNameList(kids) {
@@ -5304,47 +5361,48 @@ a:focus:not(:focus-visible) { outline: none; }
   ];
   const ENCOURAGE_DAD = [
     { hello: "Hello, {name}!", body: "You are already a steady father for {child}.", backing: "Psalm 103:13 · as a father shows compassion" },
-    { hello: "Welcome, {name}.", body: "Your presence is a covering for your family.", backing: "Ephesians 6:4 · bring them up in the Lord" },
-    { hello: "Hi, {name}.", body: "Strength looks like showing up — again.", backing: "1 Corinthians 16:13 · act like men, be strong" },
-    { hello: "Hello, {name}!", body: "God equips the dad He calls.", backing: "Hebrews 13:21 · equip you with everything good" },
-    { hello: "Welcome back, {name}.", body: "Leadership can be gentle and still be strong.", backing: "Matthew 20:26 · whoever would be great must serve" },
-    { hello: "Hi, {name}.", body: "Your care for {child} preaches louder than words.", backing: "1 John 3:18 · love in deed and truth" },
-    { hello: "Hello, {name}!", body: "You don’t have to have every answer to be faithful.", backing: "Proverbs 3:5 · trust in the Lord" },
+    { hello: "Welcome, {name}.", body: "Your child needs a dad who shows up — and that is you.", backing: "Ephesians 6:4 · bring them up in the Lord" },
+    { hello: "Hi, {name}.", body: "Fatherhood is not a sideline. Your presence is the assignment.", backing: "1 Corinthians 16:13 · be watchful, stand firm" },
+    { hello: "Hello, {name}!", body: "God equips the dad He calls — including the tired one.", backing: "Hebrews 13:21 · equip you with everything good" },
+    { hello: "Welcome back, {name}.", body: "A co-parent’s strength can be quiet and still hold the room.", backing: "Matthew 20:26 · whoever would be great must serve" },
+    { hello: "Hi, {name}.", body: "Your care for {child} preaches louder than any speech.", backing: "1 John 3:18 · love in deed and truth" },
+    { hello: "Hello, {name}!", body: "You don’t have to have every answer to be their dad today.", backing: "Proverbs 3:5 · trust in the Lord" },
     { hello: "Welcome, {name}.", body: "The Lord fathers you as you father {child}.", backing: "2 Corinthians 6:18 · I will be a father to you" },
-    { hello: "Hi, {name}.", body: "Protecting peace at home is holy work.", backing: "Romans 12:18 · live peaceably with all" },
-    { hello: "Hello, {name}!", body: "Small consistent love builds a lifetime.", backing: "Galatians 6:9 · do not grow weary" },
-    { hello: "Welcome, {name}.", body: "Courage includes asking for help.", backing: "Ecclesiastes 4:9 · two are better than one" },
-    { hello: "Hi, {name}.", body: "God sees the quiet sacrifices you make.", backing: "Hebrews 6:10 · He will not forget your work" },
+    { hello: "Hi, {name}.", body: "Protecting peace at home is holy work for a dad.", backing: "Romans 12:18 · live peaceably with all" },
+    { hello: "Hello, {name}!", body: "Small consistent love from a father builds a lifetime.", backing: "Galatians 6:9 · do not grow weary" },
+    { hello: "Welcome, {name}.", body: "Courage in fatherhood includes asking for help.", backing: "Ecclesiastes 4:9 · two are better than one" },
+    { hello: "Hi, {name}.", body: "God sees the quiet sacrifices dads make after the house is still.", backing: "Hebrews 6:10 · He will not forget your work" },
     { hello: "Hello, {name}!", body: "Your calm can become {child}’s calm.", backing: "Philippians 4:7 · peace that guards your heart" },
-    { hello: "Welcome back, {name}.", body: "Serve your family as unto the Lord.", backing: "Colossians 3:23 · work heartily for the Lord" },
+    { hello: "Welcome back, {name}.", body: "Serve this family as unto the Lord — that is leadership.", backing: "Colossians 3:23 · work heartily for the Lord" },
     { hello: "Hi, {name}.", body: "You are an answer to prayer in this home.", backing: "James 1:17 · every good gift is from above" },
-    { hello: "Hello, {name}!", body: "Integrity in private is strength in public.", backing: "Psalm 15:2 · walks with integrity" },
+    { hello: "Hello, {name}!", body: "Integrity when nobody is watching is a father’s strength.", backing: "Psalm 15:2 · walks with integrity" },
     { hello: "Welcome, {name}.", body: "Humility invites wisdom into fatherhood.", backing: "Proverbs 11:2 · with the humble is wisdom" },
-    { hello: "Hi, {name}.", body: "God strengthens tired hands and hearts.", backing: "Isaiah 41:10 · I will strengthen you" },
-    { hello: "Hello, {name}!", body: "Loving {child} well is kingdom work.", backing: "Matthew 25:40 · you did it for Me" },
-    { hello: "Welcome, {name}.", body: "Patience is power under control.", backing: "Proverbs 16:32 · better than the mighty" },
-    { hello: "Hi, {name}.", body: "You can lead without carrying everything alone.", backing: "Psalm 55:22 · cast your burden on the Lord" },
-    { hello: "Hello, {name}!", body: "Faithfulness today shapes tomorrow’s trust.", backing: "Luke 16:10 · faithful in little" },
-    { hello: "Welcome back, {name}.", body: "The Lord delights when you walk humbly.", backing: "Micah 6:8 · walk humbly with your God" },
+    { hello: "Hi, {name}.", body: "God strengthens tired hands and a dad’s tired heart.", backing: "Isaiah 41:10 · I will strengthen you" },
+    { hello: "Hello, {name}!", body: "Loving {child} well is kingdom work, not leftover time.", backing: "Matthew 25:40 · you did it for Me" },
+    { hello: "Welcome, {name}.", body: "Patience is a father’s power under control.", backing: "Proverbs 16:32 · better than the mighty" },
+    { hello: "Hi, {name}.", body: "You can lead this home without carrying it alone.", backing: "Psalm 55:22 · cast your burden on the Lord" },
+    { hello: "Hello, {name}!", body: "Faithfulness today is how {child} learns to trust you.", backing: "Luke 16:10 · faithful in little" },
+    { hello: "Welcome back, {name}.", body: "The Lord delights when a dad walks humbly.", backing: "Micah 6:8 · walk humbly with your God" },
     { hello: "Hi, {name}.", body: "Your words can give life to this home.", backing: "Proverbs 18:21 · death and life in the power of the tongue" },
-    { hello: "Hello, {name}!", body: "Rest is part of obedience, not weakness.", backing: "Exodus 20:8 · remember the Sabbath" },
-    { hello: "Welcome, {name}.", body: "God is with you in the ordinary hours.", backing: "Joshua 1:9 · the Lord your God is with you" },
-    { hello: "Hi, {name}.", body: "Compassion is not soft — it’s Christlike.", backing: "Ephesians 4:32 · be kind and compassionate" },
+    { hello: "Hello, {name}!", body: "Rest is part of a father’s obedience, not weakness.", backing: "Exodus 20:8 · remember the Sabbath" },
+    { hello: "Welcome, {name}.", body: "God is with you in the ordinary hours of dad-life.", backing: "Joshua 1:9 · the Lord your God is with you" },
+    { hello: "Hi, {name}.", body: "Compassion is not soft — it is Christlike fathering.", backing: "Ephesians 4:32 · be kind and compassionate" },
     { hello: "Hello, {name}!", body: "You are building more than routines — you’re building trust.", backing: "Psalm 127:1 · unless the Lord builds the house" },
     { hello: "Welcome, {name}.", body: "Hope anchors a father’s heart.", backing: "Hebrews 6:19 · hope as an anchor" },
-    { hello: "Hi, {name}.", body: "Gentleness makes strength safer for {child}.", backing: "Proverbs 15:1 · a gentle answer turns away wrath" },
+    { hello: "Hi, {name}.", body: "Gentleness makes a dad’s strength safer for {child}.", backing: "Proverbs 15:1 · a gentle answer turns away wrath" },
     { hello: "Hello, {name}!", body: "God’s grace covers imperfect dads who keep turning toward Him.", backing: "2 Corinthians 12:9 · grace is sufficient" },
-    { hello: "Welcome back, {name}.", body: "Show up with love; God multiplies what you offer.", backing: "Ephesians 3:20 · more than we ask or think" },
+    { hello: "Welcome back, {name}.", body: "Show up with love; God multiplies what a father offers.", backing: "Ephesians 3:20 · more than we ask or think" },
     { hello: "Hi, {name}.", body: "Your partnership lightens the whole household.", backing: "Ecclesiastes 4:12 · a cord of three strands" },
-    { hello: "Hello, {name}!", body: "Steadiness is a form of love.", backing: "1 Corinthians 15:58 · be steadfast" },
-    { hello: "Welcome, {name}.", body: "The Father is proud of faithful presence.", backing: "Matthew 25:21 · well done, good and faithful servant" },
+    { hello: "Hello, {name}!", body: "Steadiness is a form of a father’s love.", backing: "1 Corinthians 15:58 · be steadfast" },
+    { hello: "Welcome, {name}.", body: "The Father is proud of a dad’s faithful presence.", backing: "Matthew 25:21 · well done, good and faithful servant" },
     { hello: "Hi, {name}.", body: "Pray first; lead second.", backing: "Philippians 4:6 · in everything by prayer" },
     { hello: "Hello, {name}!", body: "You are needed here — not perfect, present.", backing: "Romans 12:10 · outdo one another in showing honor" },
-    { hello: "Welcome, {name}.", body: "God renews courage for the next right thing.", backing: "Isaiah 40:31 · renew their strength" },
+    { hello: "Welcome, {name}.", body: "God renews a father’s courage for the next right thing.", backing: "Isaiah 40:31 · renew their strength" },
     { hello: "Hi, {name}.", body: "Loving well is your highest assignment today.", backing: "1 Corinthians 13:13 · the greatest of these is love" },
     { hello: "Hello, {name}!", body: "You reflect a Father who never leaves.", backing: "Deuteronomy 31:6 · He will never leave you" },
     { hello: "Welcome back, {name}.", body: "Keep going — your care matters to {child} and to God.", backing: "Galatians 6:9 · in due season we will reap" },
-    { hello: "Hi, {name}.", body: "Wisdom grows when you listen as well as lead.", backing: "James 1:19 · quick to hear, slow to speak" },
+    { hello: "Hi, {name}.", body: "Wisdom grows when a dad listens as well as leads.", backing: "James 1:19 · quick to hear, slow to speak" },
+    { hello: "Hello, {name}!", body: "Being their dad is enough of a title for today.", backing: "Psalm 127:3 · children are a heritage from the Lord" },
   ];
   const ENCOURAGE_LIMB = [
     { hello: "Hello, {name}!", body: "Your help is holy work in this family’s story.", backing: "Matthew 25:40 · you did it for Me" },
@@ -5392,7 +5450,7 @@ a:focus:not(:focus-visible) { outline: none; }
   ];
 
   function getUserFirstName() {
-    return (profile.userName || profile.parentName || "friend").split(" ")[0];
+    return accountHolderFirstName();
   }
 
   function getChildDisplayName() {
@@ -5400,8 +5458,8 @@ a:focus:not(:focus-visible) { outline: none; }
   }
 
   function getEncourageRole() {
-    if ((document.body.dataset.role || "") === "limb") return "limb";
-    return profile.parentRole === "dad" ? "dad" : "mom";
+    if (isLimbRole() || (document.body.dataset.role || "") === "limb") return "limb";
+    return isDadRole() ? "dad" : "mom";
   }
 
   function pickEncouragement() {
@@ -5412,7 +5470,12 @@ a:focus:not(:focus-visible) { outline: none; }
     const item = pool[idx];
     const name = getUserFirstName();
     const child = getChildDisplayName();
-    const fill = (s) => s.replace(/\{name\}/g, name).replace(/\{child\}/g, child);
+    const fill = (s) => {
+      let out = String(s || "");
+      if (name) out = out.replace(/\{name\}/g, name);
+      else out = out.replace(/,\s*\{name\}/g, "").replace(/\{name\}!?/g, "").replace(/\s{2,}/g, " ");
+      return out.replace(/\{child\}/g, child);
+    };
     return {
       hello: fill(item.hello),
       body: fill(item.body),
@@ -5494,10 +5557,10 @@ a:focus:not(:focus-visible) { outline: none; }
 
   function showLoadingThen(callback) {
     const loading = $("#screen-loading");
-    const verse = pickLoadingVerse();
-    if ($("#loading-quote")) $("#loading-quote").textContent = verse.text;
-    if ($("#loading-ref")) $("#loading-ref").textContent = verse.ref + " · CSB";
-    if ($("#loading-hello")) $("#loading-hello").textContent = welcomeLine();
+    const enc = pickEncouragement();
+    if ($("#loading-hello")) $("#loading-hello").textContent = enc.hello || welcomeLine();
+    if ($("#loading-quote")) $("#loading-quote").textContent = enc.body || "";
+    if ($("#loading-ref")) $("#loading-ref").textContent = enc.backing || "";
     $$(".screen").forEach((s) => s.classList.remove("active"));
     if (loading) loading.classList.add("active");
     setTimeout(() => {
@@ -5675,7 +5738,7 @@ a:focus:not(:focus-visible) { outline: none; }
         phoneDisplay: formatPhoneDisplay(user.phone),
         passwordHash: hashed.hash,
         salt: hashed.salt,
-        parentRole: user.role === "limb" ? "limb" : "mom",
+        parentRole: user.role === "limb" ? "limb" : (user.parentRole === "dad" ? "dad" : "mom"),
         householdId: user.householdId || null,
         createdAt: user.createdAt || new Date().toISOString(),
       };
@@ -5687,6 +5750,7 @@ a:focus:not(:focus-visible) { outline: none; }
       account.phone = user.phone || account.phone;
       account.role = user.role || account.role;
       account.householdId = user.householdId || account.householdId;
+      if (user.parentRole === "dad" || user.parentRole === "mom") account.parentRole = user.parentRole;
       if (password && (!account.passwordHash || !account.salt)) {
         const hashed = await hashPassword(password);
         account.passwordHash = hashed.hash;
@@ -5714,6 +5778,7 @@ a:focus:not(:focus-visible) { outline: none; }
           email: account.email,
           phone: account.phone,
           password,
+          parentRole: account.parentRole || (profile && profile.parentRole) || "mom",
           householdId: account.householdId || null,
           inviteCode: (account.inviteCode || (profile && profile.inviteCode) || ""),
           household: typeof loadHousehold === "function" ? loadHousehold() : null,
@@ -5723,6 +5788,7 @@ a:focus:not(:focus-visible) { outline: none; }
       if (data && data.ok && data.token) {
         rememberCloudToken(data.token);
         if (data.user && data.user.developer) account.developer = true;
+        if (data.user && (data.user.parentRole === "dad" || data.user.parentRole === "mom")) account.parentRole = data.user.parentRole;
       }
       trackCloud("signup", account.role === "limb" ? "Limb joined" : "Parent signed up");
       return data;
@@ -5803,7 +5869,11 @@ a:focus:not(:focus-visible) { outline: none; }
       const localHasCare = (typeof logs !== "undefined" && logs.length) || (profile && profile.onboarded && profile.childName);
       if (localHasCare && localAt && remoteAt && remoteAt < localAt) return;
       cloudApplying = true;
-      if (v.profile) profile = Object.assign(profile, v.profile);
+      if (v.profile) {
+        profile = Object.assign(profile, v.profile);
+        if (currentAccount && currentAccount.role !== "limb") profile.onboarded = true;
+        if (currentAccount && currentAccount.firstName && !profile.userName) profile.userName = currentAccount.firstName;
+      }
       if (v.appData && typeof applyAppData === "function") applyAppData(v.appData);
       if (v.household && householdId()) {
         try { localStorage.setItem("mh_household_" + householdId(), JSON.stringify(v.household)); } catch (e) {}
@@ -6611,6 +6681,7 @@ a:focus:not(:focus-visible) { outline: none; }
     if (pageSub) pageSub.textContent = "One tap to start tracking " + displayChildName();
     if (age) el.textContent = `${days[d.getDay()]} · ${name} is ${age} today`;
     else el.textContent = `${days[d.getDay()]} · ${name}`;
+    refreshHomeGreeting();
   }
 
   function maybeShowPumpTipPopup() {
@@ -7568,9 +7639,16 @@ a:focus:not(:focus-visible) { outline: none; }
     $$("#parent-role-chips .date-chip").forEach((c) => {
       c.addEventListener("click", () => {
         profile.parentRole = c.dataset.prole;
+        if (currentAccount) {
+          currentAccount.parentRole = profile.parentRole;
+          const all = loadAccounts();
+          const ix = all.findIndex((a) => a.id === currentAccount.id);
+          if (ix >= 0) { all[ix].parentRole = profile.parentRole; saveAccounts(all); }
+        }
         saveProfile();
         renderSettings();
-        toast(profile.parentRole === "dad" ? "Dad / Co-parent greetings on" : "Mom greetings on");
+        refreshHomeGreeting();
+        toast(profile.parentRole === "dad" ? "Dad / Co-parent encouragement on" : "Mom encouragement on");
       });
     });
     $$("#font-options .font-option").forEach((btn) => {
@@ -8520,6 +8598,7 @@ a:focus:not(:focus-visible) { outline: none; }
     const role = document.body.dataset.role || "parent";
     document.body.classList.toggle("role-limb", role === "limb");
     document.body.classList.toggle("role-parent", role === "parent");
+    refreshHomeGreeting();
     applyTrackingVisibility();
     applyClockGate();
     const acctBtn = $("#btn-acct");
@@ -9333,7 +9412,8 @@ a:focus:not(:focus-visible) { outline: none; }
     const h = $("#todays-tip h3");
     const p = $("#todays-tip p");
     if (!h || !p || !DAILY_TIPS.length) return;
-    const tip = DAILY_TIPS[new Date().getDate() % DAILY_TIPS.length];
+    const tips = isDadRole() ? DAILY_TIPS_DAD : DAILY_TIPS;
+    const tip = tips[new Date().getDate() % tips.length];
     h.textContent = tip.title;
     p.textContent = tip.body;
   }

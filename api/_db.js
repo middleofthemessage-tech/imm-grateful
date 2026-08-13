@@ -232,6 +232,7 @@ function publicUser(u) {
     phoneLast4: (u.phone || "").slice(-4),
     developer: !!u.developer || isDevPhone(u.phone),
     householdId: u.householdId || null,
+    parentRole: u.parentRole || (u.role === "limb" ? "limb" : "mom"),
     createdAt: u.createdAt,
     lastSeen: u.lastSeen,
   };
