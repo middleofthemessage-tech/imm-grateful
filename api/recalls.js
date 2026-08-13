@@ -1,12 +1,87 @@
 // Live baby/child recalls from official U.S. government sources.
 // Used by Vercel at /api/recalls so the browser is not blocked by CORS.
 
+const RECALL_SOURCES = [
+  {
+    id: "cpsc",
+    name: "CPSC – Consumer Product Safety Commission",
+    category: "Products & Gear",
+    description: "Toys, cribs, strollers, high chairs, car seats (non-vehicle), clothing, furniture, baby gear",
+    website: "https://www.cpsc.gov/Recalls",
+    api: "https://www.saferproducts.gov/RestWebServices/Recall",
+    notes: "Best official source for baby products. Has free public API (JSON/XML).",
+  },
+  {
+    id: "fda",
+    name: "FDA – Food & Drug Administration",
+    category: "Food, Formula & Medicine",
+    description: "Infant formula, baby food, medications, medical devices",
+    website: "https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts",
+    rss: "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/food-safety-recalls/rss.xml",
+    notes: "Primary source for formula and food recalls. Also has openFDA APIs.",
+  },
+  {
+    id: "usda",
+    name: "USDA FSIS",
+    category: "Meat, Poultry & Eggs",
+    description: "Meat, poultry, and egg product recalls",
+    website: "https://www.fsis.usda.gov/recalls",
+    api: "https://www.fsis.usda.gov/fsis/api/recall/v/1",
+    notes: "Official source for meat/poultry recalls. Has free API.",
+  },
+  {
+    id: "recalls-gov",
+    name: "Recalls.gov",
+    category: "All Federal Recalls",
+    description: "One-stop portal that combines CPSC, FDA, USDA, NHTSA and others",
+    website: "https://www.recalls.gov",
+    notes: "Good overview page, but better to pull directly from individual agencies for accuracy.",
+  },
+  {
+    id: "nhtsa",
+    name: "NHTSA",
+    category: "Car Seats & Vehicles",
+    description: "Car seats, booster seats, vehicle-related child safety equipment",
+    website: "https://www.nhtsa.gov/recalls",
+    api: "https://api.nhtsa.gov/recalls/recallsByVehicle",
+    notes: "Essential for car seat recalls.",
+  },
+  {
+    id: "saferproducts",
+    name: "SaferProducts.gov",
+    category: "Unsafe Product Reports",
+    description: "Public database of consumer complaints and unsafe product reports",
+    website: "https://www.saferproducts.gov",
+    notes: "Useful for early warnings before official recalls.",
+  },
+  {
+    id: "aap",
+    name: "American Academy of Pediatrics (AAP)",
+    category: "Medical Guidance",
+    description: "Pediatricians’ highlights of important child product and health alerts",
+    website: "https://www.aap.org",
+    notes: "Not a raw data source, but excellent for trusted summaries.",
+  },
+  {
+    id: "cdc",
+    name: "CDC – Centers for Disease Control",
+    category: "Outbreaks & Health Alerts",
+    description: "Foodborne illness outbreaks and health warnings",
+    website: "https://www.cdc.gov/foodsafety",
+    notes: "Important when recalls are linked to actual outbreaks.",
+  },
+];
+
 const CPSC_API = "https://www.saferproducts.gov/RestWebServices/Recall";
 const CPSC_RSS = "https://www.cpsc.gov/Newsroom/CPSC-RSS-Feed/Recalls-RSS";
 const FDA_FOOD = "https://api.fda.gov/food/enforcement.json";
 const FDA_DEVICE = "https://api.fda.gov/device/enforcement.json";
+const FDA_RSS = "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/food-safety-recalls/rss.xml";
+const USDA_API = "https://www.fsis.usda.gov/fsis/api/recall/v/1";
+const CDC_API = "https://tools.cdc.gov/api/v2/resources/media?topic=food+safety&max=12";
 
-const BABY_RE = /infant|baby|toddler|child|crib|stroller|bassinet|pacifier|teething|high.?chair|car\s*seat|walker|play.?yard|nursery|kids?|children|formula|bottle|sippy|pacifier/i;
+const BABY_RE = /infant|baby|toddler|child|crib|stroller|bassinet|pacifier|teething|high.?chair|car\s*seat|booster seat|walker|play.?yard|nursery|kids?|children|formula|bottle|sippy/i;
+const FAMILY_FOOD_RE = /infant|baby|toddler|child|kid|school|lunch|nugget|hot\s*dog|hotdog|formula|pouch|puree|applesauce|family/i;
 
 function classifyHazard(text) {
   const t = (text || "").toLowerCase();
@@ -15,7 +90,8 @@ function classifyHazard(text) {
   if (/chok|magnet ingest|small part|teething/.test(t)) return { hazard: "choking", hazardLabel: "Choking Hazard", category: "toys" };
   if (/entrap/.test(t)) return { hazard: "entrapment", hazardLabel: "Entrapment", category: "gear" };
   if (/fall|walker|stair|tip.?over/.test(t)) return { hazard: "fall", hazardLabel: "Fall Hazard", category: "gear" };
-  if (/formula|feed|bottle/.test(t)) return { hazard: "other", hazardLabel: "Feeding Safety", category: "feeding" };
+  if (/car\s*seat|booster seat|child restraint/.test(t)) return { hazard: "other", hazardLabel: "Car Seat Safety", category: "carseat" };
+  if (/formula|feed|bottle|puree|applesauce|salmonella|listeria|cronobacter/.test(t)) return { hazard: "other", hazardLabel: "Feeding Safety", category: "feeding" };
   if (/burn|flamm|sleepwear|pajama/.test(t)) return { hazard: "other", hazardLabel: "Burn Hazard", category: "gear" };
   if (/battery|coin cell|button cell|reese/.test(t)) return { hazard: "other", hazardLabel: "Battery Ingestion", category: "toys" };
   return { hazard: "other", hazardLabel: "Injury Risk", category: "gear" };
@@ -115,37 +191,38 @@ async function getText(url) {
   return res.text();
 }
 
-function parseRss(xml) {
+function parseRss(xml, source, fallbackUrl) {
   const items = [];
   const blocks = xml.split(/<item>/i).slice(1);
   blocks.forEach((block) => {
     const title = (block.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i) || [])[1] || "";
-    const link = (block.match(/<link>([\s\S]*?)<\/link>/i) || [])[1] || "https://www.cpsc.gov/Recalls";
+    const link = (block.match(/<link>([\s\S]*?)<\/link>/i) || [])[1] || fallbackUrl;
     const desc = (block.match(/<description>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/i) || [])[1] || title;
     const pub = (block.match(/<pubDate>([\s\S]*?)<\/pubDate>/i) || [])[1] || "";
     const clean = (s) => String(s || "").replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/\s+/g, " ").trim();
     const t = clean(title);
     const d = clean(desc);
-    if (!isBabyBlob(t + " " + d)) return;
+    if (!isBabyBlob(t + " " + d) && source !== "FDA") return;
+    if (source === "FDA" && !isBabyBlob(t + " " + d) && !/food|formula|infant|baby|outbreak/i.test(t + " " + d)) return;
     const dt = pub ? new Date(pub) : new Date();
     const iso = isNaN(dt.getTime()) ? new Date().toISOString().slice(0, 10) : dt.toISOString().slice(0, 10);
     const classified = classifyHazard(t + " " + d);
     items.push({
-      id: "rss-" + t.slice(0, 48),
-      source: "CPSC",
-      sourceUrl: clean(link) || "https://www.cpsc.gov/Recalls",
+      id: "rss-" + source + "-" + t.slice(0, 48),
+      source: source || "CPSC",
+      sourceUrl: clean(link) || fallbackUrl,
       product: t.split(" Recalled")[0].slice(0, 80),
       title: t,
       hazard: classified.hazard,
       hazardLabel: classified.hazardLabel,
       category: classified.category,
-      urgent: /death|serious injury|stop using|immediately/i.test(t + " " + d),
+      urgent: /death|serious injury|stop using|immediately|outbreak/i.test(t + " " + d),
       date: iso,
       dateLabel: dateLabel(iso),
-      location: "See CPSC notice",
+      location: "See " + (source || "CPSC") + " notice",
       units: "See notice",
       description: d,
-      remedy: "Follow the official CPSC recall notice.",
+      remedy: "Follow the official " + (source || "CPSC") + " recall notice.",
       soldAt: "See notice",
     });
   });
@@ -175,6 +252,8 @@ module.exports = async function handler(req, res) {
     `${CPSC_API}?format=json&RecallDateStart=${dateStart}&ProductName=Crib`,
     `${CPSC_API}?format=json&RecallDateStart=${dateStart}&ProductName=Stroller`,
     `${CPSC_API}?format=json&RecallDateStart=${dateStart}&ProductName=Walker`,
+    `${CPSC_API}?format=json&RecallDateStart=${dateStart}&ProductName=Car%20Seat`,
+    `${CPSC_API}?format=json&RecallDateStart=${dateStart}&RecallTitle=booster`,
   ];
 
   await Promise.all(
@@ -214,25 +293,107 @@ module.exports = async function handler(req, res) {
 
   try {
     const xml = await getText(CPSC_RSS);
-    const rssItems = parseRss(xml);
+    const rssItems = parseRss(xml, "CPSC", "https://www.cpsc.gov/Recalls");
     if (rssItems.length) sources.push("CPSC Recalls RSS");
     rssItems.forEach((item) => {
       if (!byId.has(item.id)) byId.set(item.id, item);
     });
   } catch (e) {}
 
-  const items = Array.from(byId.values()).sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 50);
+  try {
+    const xml = await getText(FDA_RSS);
+    const rssItems = parseRss(xml, "FDA", "https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts");
+    if (rssItems.length) sources.push("FDA food RSS");
+    rssItems.forEach((item) => {
+      item.category = item.category === "gear" ? "feeding" : item.category;
+      if (!byId.has(item.id)) byId.set(item.id, item);
+    });
+  } catch (e) {}
+
+  try {
+    const usda = await getJson(USDA_API);
+    const arr = Array.isArray(usda) ? usda : [];
+    let kept = 0;
+    arr.forEach((item) => {
+      const title = item.field_title || "";
+      const reason = item.field_recall_reason || "";
+      const summary = item.field_summary || "";
+      const products = Array.isArray(item.field_product_items) ? item.field_product_items.join(" ") : String(item.field_product_items || "");
+      const blob = [title, reason, summary, products].join(" ");
+      const dateRaw = (item.field_recall_date || item.field_last_modified_date || "").toString().slice(0, 10);
+      const recent = dateRaw >= dateStart;
+      const classI = /class\s*i\b/i.test(item.field_recall_classification || "") || /high/i.test(item.field_risk_level || "");
+      if (!recent) return;
+      if (!FAMILY_FOOD_RE.test(blob) && !classI) return;
+      const classified = classifyHazard(blob);
+      const mapped = {
+        id: "usda-" + (item.field_recall_number_export || item.field_recall_number || title).toString(),
+        source: "USDA",
+        sourceUrl: item.field_recall_url || "https://www.fsis.usda.gov/recalls",
+        product: title.split(" for ")[1] || title.slice(0, 90),
+        title,
+        hazard: classified.hazard,
+        hazardLabel: item.field_recall_classification || classified.hazardLabel,
+        category: "feeding",
+        urgent: classI || /outbreak|salmonella|listeria|e\.\s*coli/i.test(blob),
+        date: dateRaw || "1970-01-01",
+        dateLabel: dateLabel(dateRaw),
+        location: Array.isArray(item.field_states) ? item.field_states.join(", ") : "See USDA notice",
+        units: "See notice",
+        description: String(summary || reason || title).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        remedy: "Do not eat. Follow the official USDA-FSIS recall or public health alert.",
+        soldAt: "See USDA notice",
+      };
+      if (!byId.has(mapped.id)) {
+        byId.set(mapped.id, mapped);
+        kept += 1;
+      }
+    });
+    if (kept) sources.push("USDA FSIS");
+  } catch (e) {}
+
+  try {
+    const cdc = await getJson(CDC_API);
+    const results = (cdc && cdc.results) || [];
+    results.forEach((item) => {
+      const title = item.name || item.title || "";
+      const desc = item.description || item.extendedDescription || title;
+      if (!/outbreak|recall/i.test(title + " " + desc)) return;
+      if (!/infant|baby|child|formula|foodborne|salmonella|listeria|cronobacter/i.test(title + " " + desc)) return;
+      const iso = (item.datePublished || item.dateModified || "").toString().slice(0, 10);
+      const classified = classifyHazard(title + " " + desc);
+      const mapped = {
+        id: "cdc-" + (item.id || title).toString(),
+        source: "CDC",
+        sourceUrl: (item.sourceUrl || item.targetUrl || item.permalink || "https://www.cdc.gov/foodsafety").toString(),
+        product: title.slice(0, 90),
+        title,
+        hazard: classified.hazard,
+        hazardLabel: "Health Alert",
+        category: "feeding",
+        urgent: /outbreak|infant|cronobacter/i.test(title + " " + desc),
+        date: iso || "1970-01-01",
+        dateLabel: dateLabel(iso),
+        location: "Nationwide",
+        units: "Guidance",
+        description: String(desc).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        remedy: "Read the CDC notice. If you have this food at home, follow official discard or return instructions.",
+        soldAt: "See notice",
+      };
+      if (!byId.has(mapped.id)) byId.set(mapped.id, mapped);
+    });
+    if (results.length) sources.push("CDC");
+  } catch (e) {}
+
+  const items = Array.from(byId.values()).sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 60);
 
   res.status(200).json({
     live: items.length > 0,
     at: Date.now(),
     count: items.length,
     sources: Array.from(new Set(sources)),
+    catalog: RECALL_SOURCES,
     items,
-    links: {
-      cpsc: "https://www.cpsc.gov/Recalls",
-      saferproducts: "https://www.saferproducts.gov/",
-      fda: "https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts",
-    },
+    links: Object.fromEntries(RECALL_SOURCES.map((s) => [s.id, s.website])),
   });
 };

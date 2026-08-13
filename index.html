@@ -235,6 +235,19 @@ body:has(#screen-auth.active) .corner-mark {
   background: var(--sage-dark);
   color: var(--white);
 }
+.sfilter {
+  padding: 7px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #F5F0E8;
+  color: var(--text-lt);
+  border: 1.5px solid transparent;
+}
+.sfilter.active {
+  background: var(--teal);
+  color: var(--white);
+}
 .recalls-list { margin-top: 6px; }
 .recall-card {
   background: var(--white);
@@ -296,6 +309,34 @@ body:has(#screen-auth.active) .corner-mark {
 .recall-card-hazard.entrapment { background: #E8F0F5; color: #2D5C7A; }
 .recall-card-hazard.suffocation { background: #FDE8F4; color: #8A2D6A; }
 .recall-card-hazard.drowning { background: #E8F4F8; color: #1E4D5C; }
+.recall-source-dir {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+@media (min-width: 700px) {
+  .recall-source-dir { grid-template-columns: 1fr 1fr; }
+}
+.recall-source-card {
+  display: block;
+  text-align: left;
+  text-decoration: none;
+  color: inherit;
+  background: var(--white);
+  border: 1.5px solid var(--sage-pale);
+  border-radius: 14px;
+  padding: 12px;
+}
+.recall-source-card strong { display: block; font-size: 13px; margin-bottom: 3px; }
+.recall-source-card span {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sage-dark);
+  margin-bottom: 4px;
+}
+.recall-source-card p { font-size: 12px; color: var(--text-lt); line-height: 1.4; }
 .recall-card-desc {
   font-size: 13px;
   color: var(--text-lt);
@@ -2754,6 +2795,16 @@ a:focus:not(:focus-visible) { outline: none; }
               <button class="rfilter" data-filter="gear">Gear</button>
               <button class="rfilter" data-filter="toys">Toys</button>
               <button class="rfilter" data-filter="feeding">Feeding</button>
+              <button class="rfilter" data-filter="carseat">Car seats</button>
+            </div>
+
+            <div class="hazard-filters" id="source-filters">
+              <button class="sfilter active" data-source="all">All agencies</button>
+              <button class="sfilter" data-source="CPSC">CPSC</button>
+              <button class="sfilter" data-source="FDA">FDA</button>
+              <button class="sfilter" data-source="USDA">USDA</button>
+              <button class="sfilter" data-source="CDC">CDC</button>
+              <button class="sfilter" data-source="NHTSA">NHTSA</button>
             </div>
 
             <div class="hazard-filters" id="hazard-filters">
@@ -2766,7 +2817,8 @@ a:focus:not(:focus-visible) { outline: none; }
             </div>
 
             <div id="recalls-list" class="recalls-list"></div>
-            <p class="recalls-footnote">Loading official CPSC baby &amp; child recalls when available. </p>
+            <p class="recalls-footnote">Loading official recalls from CPSC, FDA, USDA, NHTSA, and CDC when available.</p>
+            <div class="recall-source-dir" id="recall-source-dir"></div>
           </section>
 
           <h3 class="feed-section-label">For you</h3>
@@ -3553,6 +3605,77 @@ a:focus:not(:focus-visible) { outline: none; }
     Feeding: { bg: "#F5E8E0", text: "#7A4A2D" },
   };
 
+  const RECALL_SOURCES = [
+    {
+      id: "cpsc",
+      name: "CPSC – Consumer Product Safety Commission",
+      category: "Products & Gear",
+      description: "Toys, cribs, strollers, high chairs, car seats (non-vehicle), clothing, furniture, baby gear",
+      website: "https://www.cpsc.gov/Recalls",
+      api: "https://www.saferproducts.gov/RestWebServices/Recall",
+      notes: "Best official source for baby products. Has free public API (JSON/XML).",
+    },
+    {
+      id: "fda",
+      name: "FDA – Food & Drug Administration",
+      category: "Food, Formula & Medicine",
+      description: "Infant formula, baby food, medications, medical devices",
+      website: "https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts",
+      rss: "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/food-safety-recalls/rss.xml",
+      notes: "Primary source for formula and food recalls. Also has openFDA APIs.",
+    },
+    {
+      id: "usda",
+      name: "USDA FSIS",
+      category: "Meat, Poultry & Eggs",
+      description: "Meat, poultry, and egg product recalls",
+      website: "https://www.fsis.usda.gov/recalls",
+      api: "https://www.fsis.usda.gov/fsis/api/recall/v/1",
+      notes: "Official source for meat/poultry recalls. Has free API.",
+    },
+    {
+      id: "recalls-gov",
+      name: "Recalls.gov",
+      category: "All Federal Recalls",
+      description: "One-stop portal that combines CPSC, FDA, USDA, NHTSA and others",
+      website: "https://www.recalls.gov",
+      notes: "Good overview page, but better to pull directly from individual agencies for accuracy.",
+    },
+    {
+      id: "nhtsa",
+      name: "NHTSA",
+      category: "Car Seats & Vehicles",
+      description: "Car seats, booster seats, vehicle-related child safety equipment",
+      website: "https://www.nhtsa.gov/recalls",
+      api: "https://api.nhtsa.gov/recalls/recallsByVehicle",
+      notes: "Essential for car seat recalls.",
+    },
+    {
+      id: "saferproducts",
+      name: "SaferProducts.gov",
+      category: "Unsafe Product Reports",
+      description: "Public database of consumer complaints and unsafe product reports",
+      website: "https://www.saferproducts.gov",
+      notes: "Useful for early warnings before official recalls.",
+    },
+    {
+      id: "aap",
+      name: "American Academy of Pediatrics (AAP)",
+      category: "Medical Guidance",
+      description: "Pediatricians’ highlights of important child product and health alerts",
+      website: "https://www.aap.org",
+      notes: "Not a raw data source, but excellent for trusted summaries.",
+    },
+    {
+      id: "cdc",
+      name: "CDC – Centers for Disease Control",
+      category: "Outbreaks & Health Alerts",
+      description: "Foodborne illness outbreaks and health warnings",
+      website: "https://www.cdc.gov/foodsafety",
+      notes: "Important when recalls are linked to actual outbreaks.",
+    },
+  ];
+
   const FEED = [
     { type: "meme", tag: "Quick Laugh", title: "When baby naps but you forget how to adult", color: "#FFF5E8" },
     { type: "video", tag: "Watch & Learn", title: "Gentle rocking hack — 45 sec", color: "#E8F0F5" },
@@ -3599,7 +3722,7 @@ a:focus:not(:focus-visible) { outline: none; }
   // Safety recalls — live CPSC SaferProducts API + curated baby/child fallback
   // API: https://www.saferproducts.gov/RestWebServices/Recall?format=json
   const RECALL_API_BASE = "https://www.saferproducts.gov/RestWebServices/Recall";
-  const RECALL_CACHE_KEY = "mh_recalls_cache_v3";
+  const RECALL_CACHE_KEY = "mh_recalls_cache_v4";
   const RECALL_CACHE_MS = 3 * 60 * 60 * 1000; // 3 hours
   const FDA_FOOD_API = "https://api.fda.gov/food/enforcement.json";
   const CPSC_RECALLS_PAGE = "https://www.cpsc.gov/Recalls";
@@ -3818,7 +3941,8 @@ a:focus:not(:focus-visible) { outline: none; }
     if (/chok|magnet ingest|small part|teething/.test(t)) return { hazard: "choking", hazardLabel: "Choking Hazard", category: "toys" };
     if (/entrap/.test(t)) return { hazard: "entrapment", hazardLabel: "Entrapment", category: "gear" };
     if (/fall|walker|stair|tip.?over/.test(t)) return { hazard: "fall", hazardLabel: "Fall Hazard", category: "gear" };
-    if (/formula|feed|bottle/.test(t)) return { hazard: "other", hazardLabel: "Feeding Safety", category: "feeding" };
+    if (/car\s*seat|booster seat|child restraint/.test(t)) return { hazard: "other", hazardLabel: "Car Seat Safety", category: "carseat" };
+    if (/formula|feed|bottle|puree|applesauce|salmonella|listeria|cronobacter/.test(t)) return { hazard: "other", hazardLabel: "Feeding Safety", category: "feeding" };
     if (/burn|flamm|sleepwear|pajama/.test(t)) return { hazard: "other", hazardLabel: "Burn Hazard", category: "gear" };
     if (/battery|coin cell|button cell|reese/.test(t)) return { hazard: "other", hazardLabel: "Battery Ingestion", category: "toys" };
     return { hazard: "other", hazardLabel: "Injury Risk", category: "gear" };
@@ -4020,6 +4144,7 @@ a:focus:not(:focus-visible) { outline: none; }
 
   let recallFilter = "all";
   let hazardFilter = "all";
+  let sourceFilter = "all";
   let dismissedUrgentIds = new Set();
 
 
@@ -5498,8 +5623,29 @@ a:focus:not(:focus-visible) { outline: none; }
       if (recallFilter !== "all" && recallFilter !== "urgent" && r.category !== recallFilter) return false;
       if (recallFilter === "urgent" && !r.urgent) return false;
       if (hazardFilter !== "all" && r.hazard !== hazardFilter) return false;
+      if (sourceFilter !== "all") {
+        const src = String(r.source || "").toUpperCase();
+        if (sourceFilter === "NHTSA") {
+          if (src !== "NHTSA" && r.category !== "carseat") return false;
+        } else if (src !== String(sourceFilter).toUpperCase()) {
+          return false;
+        }
+      }
       return true;
     }).sort((a, b) => (a.date < b.date ? 1 : -1));
+  }
+
+  function renderRecallSources() {
+    const root = $("#recall-source-dir");
+    if (!root) return;
+    root.innerHTML = RECALL_SOURCES.map(
+      (s) => `
+      <a class="recall-source-card" href="${escapeHtml(s.website)}" target="_blank" rel="noopener">
+        <span>${escapeHtml(s.category)}</span>
+        <strong>${escapeHtml(s.name)}</strong>
+        <p>${escapeHtml(s.description)}</p>
+      </a>`
+    ).join("");
   }
 
   function renderRecalls() {
@@ -7787,6 +7933,14 @@ a:focus:not(:focus-visible) { outline: none; }
         renderRecalls();
       });
     });
+    $$(".sfilter").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        sourceFilter = btn.dataset.source || "all";
+        $$(".sfilter").forEach((b) => b.classList.toggle("active", b === btn));
+        renderRecalls();
+      });
+    });
+    renderRecallSources();
     $("#interests-save")?.addEventListener("click", saveInterests);
     renderInterestGroups();
     renderDailyTip();
