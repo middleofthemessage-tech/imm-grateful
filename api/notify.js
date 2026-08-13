@@ -11,41 +11,11 @@ function json(res, code, body) {
 }
 
 const sms = require("./_sms");
-const cleanPhone = sms.cleanPhone;
+const mail = require("./_mail");
+const welcome = require("./_welcome");
 
 async function sendEmail(to, subject, text, html) {
-  const key = process.env.RESEND_API_KEY;
-  if (key) {
-    const r = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: process.env.NOTIFY_FROM || "In the Middle of the [Mess]age <onboarding@resend.dev>",
-        to: [to],
-        subject,
-        text,
-        html: html || "<p>" + String(text).replace(/\n/g, "<br>") + "</p>",
-      }),
-    });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data.message || "Resend failed");
-    return { ok: true, via: "resend" };
-  }
-  const r = await fetch("https://formsubmit.co/ajax/" + encodeURIComponent(to), {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({
-      _subject: subject,
-      _template: "box",
-      _captcha: "false",
-      message: text,
-    }),
-  });
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok && data.success !== "true" && data.success !== true) {
-    throw new Error(data.message || "Email send failed");
-  }
-  return { ok: true, via: "formsubmit" };
+  return mail.sendEmail(to, subject, text, html);
 }
 
 async function sendSms(phone, text) {
@@ -78,9 +48,22 @@ module.exports = async function handler(req, res) {
   const body = await readBody(req);
   const email = String(body.email || "").trim();
   const phone = String(body.phone || "").trim();
-  const subject = String(body.subject || "In the Middle of the [Mess]age").slice(0, 160);
-  const text = String(body.text || "").slice(0, 4000);
-  const html = body.html ? String(body.html).slice(0, 8000) : "";
+  let subject = String(body.subject || "In the Middle of the [Mess]age").slice(0, 160);
+  let text = String(body.text || "").slice(0, 4000);
+  let html = body.html ? String(body.html).slice(0, 12000) : "";
+  let smsText = String(body.smsText || "").slice(0, 320);
+  if (body.type === "welcome") {
+    const copy = welcome.welcomeCopy({
+      firstName: body.name || body.firstName || "there",
+      role: body.role === "limb" ? "limb" : "parent",
+      email,
+      phone,
+    });
+    subject = copy.subject;
+    text = copy.text;
+    html = copy.html;
+    smsText = copy.smsText;
+  }
   const wantEmail = body.sendEmail !== false && !!email;
   const wantSms = body.sendSms !== false && !!phone;
   if (!text || (!wantEmail && !wantSms)) {
@@ -94,7 +77,7 @@ module.exports = async function handler(req, res) {
     results.email = { ok: false, error: e.message };
   }
   try {
-    if (wantSms) results.sms = await sendSms(phone, text);
+    if (wantSms) results.sms = await sendSms(phone, smsText || text);
   } catch (e) {
     results.sms = { ok: false, error: e.message };
   }

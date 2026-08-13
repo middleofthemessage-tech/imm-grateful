@@ -4669,10 +4669,10 @@ a:focus:not(:focus-visible) { outline: none; }
         },
       });
       writeHouseholdFor(account.id, { trackingEnabled, limbUpdateMode });
-      await cloudSignup(account, password);
+      const cloud = await cloudSignup(account, password);
       await registerInviteCloud(profile.inviteCode, loadHousehold());
       await pushVault();
-      sendWelcomeNotify({ email, phone, name: firstName, role: "parent" });
+      sendWelcomeNotify({ email, phone, name: firstName, role: "parent", alreadySent: !!(cloud && cloud.welcomed) });
       // register invite for limb joins
       try {
         const map = JSON.parse(localStorage.getItem("mh_invite_map_v1") || "{}");
@@ -4840,14 +4840,14 @@ a:focus:not(:focus-visible) { outline: none; }
           householdId: parentId,
         },
       });
-      await cloudSignup(account, password);
+      const cloud = await cloudSignup(account, password);
       await fetch("/api/account", {
         method: "POST",
         headers: cloudHeaders(),
         body: JSON.stringify({ action: "limb-join", inviteCode: code }),
       }).catch(() => {});
       await pushVault();
-      sendWelcomeNotify({ email, phone, name: firstName, role: "limb" });
+      sendWelcomeNotify({ email, phone, name: firstName, role: "limb", alreadySent: !!(cloud && cloud.welcomed) });
       toast("You’re in as Limb · " + firstName);
     } catch (err) {
       console.error(err);
@@ -5452,25 +5452,25 @@ a:focus:not(:focus-visible) { outline: none; }
 
   function sendWelcomeNotify(opts) {
     opts = opts || {};
+    if (opts.alreadySent) {
+      toast("Welcome email and text are on the way");
+      return Promise.resolve({ ok: true, skipped: true });
+    }
     const email = opts.email || profile.email || (currentAccount && currentAccount.email) || "";
     const phone = opts.phone || profile.phone || (currentAccount && currentAccount.phone) || "";
     const name = opts.name || getUserFirstName();
     const limb = opts.role === "limb" || isLimbRole();
-    const subject = "Welcome to In the Middle of the [Mess]age";
-    const text = limb
-      ? `Hi ${name},\n\nYour Limb account is ready. Clock in when you start a shift so tracking unlocks and parents stay in the loop.\n\nIn the Middle of the [Mess]age\nA break for your brain.`
-      : `Hi ${name},\n\nYour parent account is ready. You are signed in as ${parentRoleWord()} of ${displayChildAddress()}.\n\nWe'll send a short CSB verse and safety/recall notes to this email. You can change that in Settings.\n\nIn the Middle of the [Mess]age\nA break for your brain.`;
     return sendNotify({
       type: "welcome",
+      role: limb ? "limb" : "parent",
+      name,
       email,
       phone,
-      subject,
-      text,
-      sendEmail: profile.notifyEmail !== false,
-      sendSms: profile.notifySms !== false,
+      sendEmail: true,
+      sendSms: true,
     }).then((r) => {
       if (r && r.ok) toast("Confirmation sent to your email and phone");
-      else toast("Account created · confirmation is on its way");
+      else toast("Account created · welcome note is still sending");
       return r;
     });
   }

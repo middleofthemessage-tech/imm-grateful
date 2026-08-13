@@ -1,5 +1,6 @@
 const dbx = require("./_db");
 const sms = require("./_sms");
+const welcome = require("./_welcome");
 
 function inviteCodeOf(value) {
   return String(value || "").trim().toUpperCase();
@@ -93,6 +94,7 @@ module.exports = async function handler(req, res) {
     }
     const token = dbx.newToken();
     db.sessions.push({ token, accountId: user.id, exp: Date.now() + 30 * 86400000 });
+    const welcomed = await welcome.sendWelcomeAccount(user);
     if (user.developer) {
       await sms.notifyOwner(
         db,
@@ -105,7 +107,14 @@ module.exports = async function handler(req, res) {
       await sms.notifyOwner(db, who + " just started using the app as a " + kind + ".");
     }
     await dbx.save(db);
-    return dbx.send(res, 200, { ok: true, token, user: dbx.publicUser(user), store: dbx.kind() });
+    return dbx.send(res, 200, {
+      ok: true,
+      token,
+      user: dbx.publicUser(user),
+      store: dbx.kind(),
+      welcomed: !!welcomed.ok,
+      welcome: welcomed,
+    });
   }
 
   if (action === "signin") {
