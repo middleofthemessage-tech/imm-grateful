@@ -10,13 +10,8 @@ function json(res, code, body) {
   res.end(JSON.stringify(body));
 }
 
-function cleanPhone(phone) {
-  const d = String(phone || "").replace(/\D/g, "");
-  if (d.length === 10) return "+1" + d;
-  if (d.length === 11 && d[0] === "1") return "+" + d;
-  if (String(phone || "").startsWith("+") && d.length >= 10) return "+" + d;
-  return d.length >= 10 ? "+" + d : "";
-}
+const sms = require("./_sms");
+const cleanPhone = sms.cleanPhone;
 
 async function sendEmail(to, subject, text, html) {
   const key = process.env.RESEND_API_KEY;
@@ -54,34 +49,7 @@ async function sendEmail(to, subject, text, html) {
 }
 
 async function sendSms(phone, text) {
-  const to = cleanPhone(phone);
-  if (!to) throw new Error("Invalid phone");
-  const sid = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_FROM;
-  if (sid && token && from) {
-    const auth = Buffer.from(sid + ":" + token).toString("base64");
-    const r = await fetch("https://api.twilio.com/2010-04-01/Accounts/" + sid + "/Messages.json", {
-      method: "POST",
-      headers: { Authorization: "Basic " + auth, "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ To: to, From: from, Body: text }).toString(),
-    });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data.message || "Twilio failed");
-    return { ok: true, via: "twilio" };
-  }
-  const r = await fetch("https://textbelt.com/text", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      phone: to,
-      message: text.slice(0, 320),
-      key: process.env.TEXTBELT_KEY || "textbelt",
-    }),
-  });
-  const data = await r.json().catch(() => ({}));
-  if (!data.success) throw new Error(data.error || "SMS send failed");
-  return { ok: true, via: "textbelt" };
+  return sms.sendSms(phone, text);
 }
 
 function readBody(req) {

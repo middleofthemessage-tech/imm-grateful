@@ -12,7 +12,7 @@ let mem = null;
 let storeKind = "file";
 
 function emptyDb() {
-  return { users: [], sessions: [], vaults: {}, events: [], invites: {}, households: {} };
+  return { users: [], sessions: [], vaults: {}, events: [], invites: {}, households: {}, meta: { alerts: {}, smsLog: [] } };
 }
 
 function redisCreds() {

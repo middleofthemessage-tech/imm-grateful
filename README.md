@@ -18,9 +18,14 @@ People tap it, create a parent account, and start using the app. Updates you pus
 
 ## Developer dashboard
 
-Sign in like a normal parent with the owner phone number. A **Dev** tab appears only on that account. Other parents never see it.
+1. Open https://imm-grateful.vercel.app/
+2. If you do not have an account yet, tap **Create Parent Account** and use phone **(770) 316-8593**
+3. If you already created that account, tap **Sign in** and use that phone plus your password
+4. After the loading screen, tap **Dev** in the bottom bar
 
-There you can review live signups, activity, and each household vault.
+Other parents never see that tab.
+
+Owner texts go to **+1 770-316-8593** when the app updates and when someone new creates an account. Add Twilio keys in Vercel for reliable SMS (free Textbelt is one text per day).
 
 ## Protected storage
 

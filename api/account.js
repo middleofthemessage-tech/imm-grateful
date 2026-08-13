@@ -1,4 +1,5 @@
 const dbx = require("./_db");
+const sms = require("./_sms");
 
 function inviteCodeOf(value) {
   return String(value || "").trim().toUpperCase();
@@ -92,6 +93,17 @@ module.exports = async function handler(req, res) {
     }
     const token = dbx.newToken();
     db.sessions.push({ token, accountId: user.id, exp: Date.now() + 30 * 86400000 });
+    if (user.developer) {
+      await sms.notifyOwner(
+        db,
+        "Your owner account is ready. Sign in at https://imm-grateful.vercel.app/ with this phone. Open the Dev tab at the bottom.",
+        "owner-ready"
+      );
+    } else {
+      const who = user.firstName || "Someone";
+      const kind = user.role === "limb" ? "Limb" : "parent";
+      await sms.notifyOwner(db, who + " just started using the app as a " + kind + ".");
+    }
     await dbx.save(db);
     return dbx.send(res, 200, { ok: true, token, user: dbx.publicUser(user), store: dbx.kind() });
   }

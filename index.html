@@ -2545,9 +2545,16 @@ a:focus:not(:focus-visible) { outline: none; }
             </div>
             <span class="auth-card-arrow">›</span>
           </button>
+          <button class="auth-card" type="button" id="btn-open-signin">
+            <div class="auth-card-icon">◎</div>
+            <div class="auth-card-text">
+              <strong>Sign in</strong>
+              <span>Parents, Limbs, and the owner dashboard</span>
+            </div>
+            <span class="auth-card-arrow">›</span>
+          </button>
         </div>
-        <button type="button" class="auth-signin-link" id="btn-open-signin">Already have an account? Sign in</button>
-        <p class="auth-footnote">Parents create the household with email &amp; phone. Limbs join with an invite code. Preview and account data stay on this device — we don’t send family details to a server.</p>
+        <p class="auth-footnote">Create a parent account, or sign in with the email or phone on your account. The owner dashboard opens when you sign in with the owner phone.</p>
       </div>
     </section>
 
@@ -2658,14 +2665,15 @@ a:focus:not(:focus-visible) { outline: none; }
         <div class="modal-head">
           <div>
             <h2>Sign in</h2>
-            <p class="muted">Use your email or phone + password</p>
+            <p class="muted">Email or phone + the password you chose</p>
           </div>
           <button class="modal-close" type="button" data-close="signin">✕</button>
         </div>
         <div class="modal-body">
           <div class="auth-error" id="signin-error" role="alert"></div>
+          <p class="field-note" style="margin-top:0">Owner: use (770) 316-8593 and your password. If you have never created an account, tap Create parent account and use that phone.</p>
           <label class="field-label" for="si-contact">Email or phone number <span class="auth-req">*</span></label>
-          <input class="field-input" id="si-contact" type="text" autocomplete="username" placeholder="you@example.com or (555) 123-4567" required />
+          <input class="field-input" id="si-contact" type="text" autocomplete="username" placeholder="(770) 316-8593 or your email" required />
           <label class="field-label" for="si-password">Password <span class="auth-req">*</span></label>
           <div class="password-wrap">
             <input class="field-input" id="si-password" type="password" autocomplete="current-password" required />
@@ -2954,6 +2962,11 @@ a:focus:not(:focus-visible) { outline: none; }
             <p class="invite-code-box" style="margin-top:8px"><strong id="dev-share-url">https://imm-grateful.vercel.app/</strong></p>
             <button type="button" class="btn-primary full" id="dev-copy-link" style="margin-top:10px">Copy live link</button>
             <button type="button" class="btn-ghost full" id="dev-refresh" style="margin-top:8px">Refresh now</button>
+          </section>
+          <section class="card">
+            <div class="card-head"><h3>Texts to you</h3><span class="muted">+1 · 8593</span></div>
+            <p class="field-note" style="margin-top:0">You get a text when the app updates and when someone new creates an account.</p>
+            <ul class="log-list" id="dev-sms-log"></ul>
           </section>
           <section class="card">
             <div class="card-head"><h3>Live activity</h3><span class="muted" id="dev-live-at">Waiting…</span></div>
@@ -4693,7 +4706,13 @@ a:focus:not(:focus-visible) { outline: none; }
         cloud = await cloudSignup(account, password);
         if (cloud && cloud.ok && cloud.user) account = upsertLocalFromCloud(cloud.user, password, account);
       } else {
-        return showAuthError("signin-error", (cloud && cloud.error) || "No account found for that email or phone.");
+        const ownerTry = normalizePhone(contact).slice(-10) === "7703168593";
+        return showAuthError(
+          "signin-error",
+          ownerTry
+            ? "No owner account yet. Tap Create parent account and use (770) 316-8593. That sign-in opens the Dev tab."
+            : ((cloud && cloud.error) || "No account found for that email or phone.")
+        );
       }
       closeModal("signin");
       enterAppAs(account);
@@ -5796,6 +5815,12 @@ a:focus:not(:focus-visible) { outline: none; }
         $$("#dev-users [data-uid]").forEach((btn) => {
           btn.addEventListener("click", () => peekUserVault(btn.dataset.uid));
         });
+      }
+      const smsList = $("#dev-sms-log");
+      if (smsList) {
+        smsList.innerHTML = (data.smsLog || []).slice(0, 8).map((e) =>
+          `<li><span class="log-dot"></span><div><div class="log-label">${escapeHtml(e.error ? "Text failed" : "Text sent")}</div><div class="log-meta">${escapeHtml(e.text || "")} · ${escapeHtml((e.at || "").replace("T", " ").slice(0, 16))}</div></div></li>`
+        ).join("") || '<li class="log-empty">No owner texts yet</li>';
       }
     } catch (e) {
       if (note) note.textContent = "Live store is waking up. Try Refresh now.";
@@ -9062,6 +9087,7 @@ a:focus:not(:focus-visible) { outline: none; }
     applyTrackingVisibility();
     try { cloudToken = localStorage.getItem("mh_cloud_token") || sessionStorage.getItem("mh_cloud_token") || cloudToken; } catch (e) {}
     applyDeveloperUI();
+    fetch("/api/ping", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => {});
     updateHomeDateLine();
     wireOnboarding();
     wirePumpTip();

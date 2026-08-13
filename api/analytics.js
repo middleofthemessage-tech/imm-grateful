@@ -1,4 +1,5 @@
 const dbx = require("./_db");
+const sms = require("./_sms");
 
 module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return dbx.send(res, 204, {});
@@ -40,12 +41,17 @@ module.exports = async function handler(req, res) {
       tracks: db.events.filter((e) => e.type === "track").length,
       clockins: db.events.filter((e) => e.type === "clockin").length,
     };
+    const meta = sms.ensureMeta(db);
     return dbx.send(res, 200, {
       ok: true,
       counts,
       users,
       events,
       store: dbx.kind(),
+      version: sms.APP_VERSION,
+      ownerPhoneLast4: sms.OWNER_PHONE.slice(-4),
+      smsLog: (meta.smsLog || []).slice(0, 12),
+      notifiedVersion: meta.notifiedVersion || null,
       at: Date.now(),
     });
   }
