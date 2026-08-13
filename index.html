@@ -2641,9 +2641,11 @@ a:focus:not(:focus-visible) { outline: none; }
           <label class="field-label">When a Limb is watching the child, I want</label>
           <div class="chip-row wrap" id="su-update-chips">
             <button type="button" class="date-chip" data-upd="realtime">Real-time updates</button>
-            <button type="button" class="date-chip active" data-upd="endshift">The log after they clock out</button>
+            <button type="button" class="date-chip active" data-upd="endshift">Log after they clock out</button>
+            <button type="button" class="date-chip" data-upd="both">Both</button>
+            <button type="button" class="date-chip" data-upd="none">None</button>
           </div>
-          <p class="field-note">Real-time sends each log to your Care inbox as it happens. Otherwise you get one shift summary when they clock out.</p>
+          <p class="field-note">Real-time sends each log as it happens. Clock-out sends one shift summary. Both does those together. None sends no care logs. You can change this anytime in Settings or when you get the “being watched” alert.</p>
 
           <p class="auth-step-label">5 · Encouragement</p>
           <div class="settings-row" style="border:none;padding:8px 0">
@@ -3244,6 +3246,26 @@ a:focus:not(:focus-visible) { outline: none; }
     </div>
 
     <!-- Parent inbox (Limb summaries) -->
+    <div class="modal-overlay" id="modal-watch-alert" hidden>
+      <div class="modal sheet">
+        <div class="modal-head">
+          <div>
+            <h2>Your child is being watched</h2>
+            <p class="muted" id="watch-alert-sub">A Limb just clocked in</p>
+          </div>
+          <button class="modal-close" type="button" data-close="watch-alert">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="field-note" id="watch-alert-body" style="margin-top:0">Choose what you want from this Limb for care updates. You can change this anytime in Settings.</p>
+          <label class="field-label">I want</label>
+          <div class="chip-row wrap" id="watch-update-chips"></div>
+          <p class="field-note" id="watch-update-note"></p>
+          <button type="button" class="btn-primary full" id="watch-alert-save" style="margin-top:12px">Save this choice</button>
+          <button type="button" class="btn-ghost full" id="watch-alert-keep" style="margin-top:8px">Keep current setting</button>
+        </div>
+      </div>
+    </div>
+
     <div class="modal-overlay" id="modal-inbox" hidden>
       <div class="modal sheet sheet-tall">
         <div class="modal-head">
@@ -4592,6 +4614,7 @@ a:focus:not(:focus-visible) { outline: none; }
       } else {
         setTimeout(() => maybeShowPumpTipPopup(), 400);
       }
+      if (account.role !== "limb") setTimeout(() => maybeShowWatchAlert(), 900);
     });
   }
   async function createParentAccountFromForm() {
@@ -4613,7 +4636,7 @@ a:focus:not(:focus-visible) { outline: none; }
     const scriptureEnabled = $("#su-scripture")?.classList.contains("on") ?? true;
     const scriptureTime = $("#su-scripture-time")?.value || "15:00";
     const trackingEnabled = $("#su-tracking")?.classList.contains("on") ?? true;
-    const limbUpdateMode = $("#su-update-chips .date-chip.active")?.dataset?.upd || "endshift";
+    const limbUpdateMode = normalizeLimbUpdateMode($("#su-update-chips .date-chip.active")?.dataset?.upd || "endshift");
 
     if (!firstName) return showAuthError("signup-error", "First name is required.");
     if (!isValidEmail(email)) return showAuthError("signup-error", "Enter a valid email address.");
@@ -4956,6 +4979,7 @@ a:focus:not(:focus-visible) { outline: none; }
         if (typeof renderCareReminders === "function") renderCareReminders();
         if (typeof renderAppointments === "function") renderAppointments();
       } catch (e) {}
+      if (account.role !== "limb") setTimeout(() => maybeShowWatchAlert(), 900);
     });
     return true;
   }
@@ -5104,6 +5128,7 @@ a:focus:not(:focus-visible) { outline: none; }
   if (profile.milestonesEnabled === undefined) profile.milestonesEnabled = true;
   if (profile.trackingEnabled === undefined) profile.trackingEnabled = true;
   if (!profile.limbUpdateMode) profile.limbUpdateMode = "endshift";
+  profile.limbUpdateMode = normalizeLimbUpdateMode(profile.limbUpdateMode);
   if (!profile.childAddress) profile.childAddress = "name";
   if (profile.childAddressCustom === undefined) profile.childAddressCustom = "";
   if (profile.notifyEmail === undefined) profile.notifyEmail = true;
@@ -5960,6 +5985,56 @@ a:focus:not(:focus-visible) { outline: none; }
       fees: [],
     };
   }
+  function normalizeLimbUpdateMode(mode) {
+    if (mode === "realtime" || mode === "endshift" || mode === "both" || mode === "none") return mode;
+    return "endshift";
+  }
+  function currentLimbUpdateMode() {
+    if (!isLimbRole() && profile && profile.limbUpdateMode) return normalizeLimbUpdateMode(profile.limbUpdateMode);
+    return normalizeLimbUpdateMode(loadHousehold().limbUpdateMode);
+  }
+  function wantsLiveLimbUpdates(mode) {
+    const m = normalizeLimbUpdateMode(mode || currentLimbUpdateMode());
+    return m === "realtime" || m === "both";
+  }
+  function wantsEndShiftLog(mode) {
+    const m = normalizeLimbUpdateMode(mode || currentLimbUpdateMode());
+    return m === "endshift" || m === "both";
+  }
+  function limbUpdateModeLabel(mode) {
+    const m = normalizeLimbUpdateMode(mode);
+    if (m === "realtime") return "Real-time updates";
+    if (m === "both") return "Both live logs and a clock-out summary";
+    if (m === "none") return "No care logs";
+    return "Log after they clock out";
+  }
+  function limbUpdateModeToast(mode) {
+    const m = normalizeLimbUpdateMode(mode);
+    if (m === "realtime") return "You'll get each Limb log as it happens";
+    if (m === "both") return "You'll get live logs and a clock-out summary";
+    if (m === "none") return "No Limb care logs until you change this";
+    return "You'll get the log when they clock out";
+  }
+  function limbUpdateChipsHtml(active) {
+    const cur = normalizeLimbUpdateMode(active || currentLimbUpdateMode());
+    return [
+      ["realtime", "Real-time updates"],
+      ["endshift", "Log after they clock out"],
+      ["both", "Both"],
+      ["none", "None"],
+    ].map(([id, label]) =>
+      `<button type="button" class="date-chip${cur === id ? " active" : ""}" data-upd="${id}">${label}</button>`
+    ).join("");
+  }
+  function setLimbUpdateMode(mode, opts) {
+    opts = opts || {};
+    mode = normalizeLimbUpdateMode(mode);
+    profile.limbUpdateMode = mode;
+    saveProfile();
+    syncHouseholdFromParent();
+    if (opts.toast !== false) toast(limbUpdateModeToast(mode));
+    return mode;
+  }
   function loadHousehold() {
     const id = householdId();
     if (!id) return emptyHousehold();
@@ -5995,7 +6070,7 @@ a:focus:not(:focus-visible) { outline: none; }
     if (!id) return;
     writeHouseholdFor(id, {
       trackingEnabled: profile.trackingEnabled !== false,
-      limbUpdateMode: profile.limbUpdateMode === "realtime" ? "realtime" : "endshift",
+      limbUpdateMode: normalizeLimbUpdateMode(profile.limbUpdateMode),
     });
   }
   function applyTrackingVisibility() {
@@ -6064,7 +6139,7 @@ a:focus:not(:focus-visible) { outline: none; }
     h.activeShift.events.push(ev);
     saveHousehold(h);
     markCareTasksFromLog(label, note);
-    if (h.limbUpdateMode === "realtime") {
+    if (wantsLiveLimbUpdates(h.limbUpdateMode)) {
       pushToParentInbox({
         id: "live-" + Date.now(),
         from: h.activeShift.limbName || "Limb",
@@ -6103,11 +6178,12 @@ a:focus:not(:focus-visible) { outline: none; }
       start: h.activeShift.startedAt,
       end: h.activeShift.startedAt,
       sentAt: h.activeShift.startedAt,
-      note: h.activeShift.limbName + " clocked in.",
+      note: h.activeShift.limbName + " clocked in. Your child is being watched. You can change Limb updates for this shift.",
       tracks: [],
       events: [],
       read: false,
       kind: "shift-start",
+      shiftId: h.activeShift.id,
     });
     applyClockGate();
     toast("Clocked in · tracking unlocked");
@@ -6126,19 +6202,36 @@ a:focus:not(:focus-visible) { outline: none; }
     const lines = events.length
       ? events.map((e) => (e.label || "Log") + (e.dur ? " (" + e.dur + ")" : "") + (e.note ? " — " + e.note : "")).join("\n")
       : "No care items were logged this shift.";
-    pushToParentInbox({
-      id: "shift-end-" + h.activeShift.id,
-      from: h.activeShift.limbName || "Limb",
-      childNames: [displayChildName({ formal: true })],
-      start: h.activeShift.startedAt,
-      end: h.activeShift.endedAt,
-      sentAt: h.activeShift.endedAt,
-      note: (h.limbUpdateMode === "realtime" ? "Shift ended. Full log:\n" : "Shift log:\n") + lines,
-      tracks: [],
-      events,
-      read: false,
-      kind: "shift-end",
-    });
+    const mode = normalizeLimbUpdateMode(h.limbUpdateMode);
+    if (wantsEndShiftLog(mode)) {
+      pushToParentInbox({
+        id: "shift-end-" + h.activeShift.id,
+        from: h.activeShift.limbName || "Limb",
+        childNames: [displayChildName({ formal: true })],
+        start: h.activeShift.startedAt,
+        end: h.activeShift.endedAt,
+        sentAt: h.activeShift.endedAt,
+        note: (mode === "both" ? "Shift ended. Full log:\n" : "Shift log:\n") + lines,
+        tracks: [],
+        events,
+        read: false,
+        kind: "shift-end",
+      });
+    } else if (mode === "realtime") {
+      pushToParentInbox({
+        id: "shift-end-" + h.activeShift.id,
+        from: h.activeShift.limbName || "Limb",
+        childNames: [displayChildName({ formal: true })],
+        start: h.activeShift.startedAt,
+        end: h.activeShift.endedAt,
+        sentAt: h.activeShift.endedAt,
+        note: (h.activeShift.limbName || "Limb") + " clocked out.",
+        tracks: [],
+        events: [],
+        read: false,
+        kind: "shift-end",
+      });
+    }
     const fresh = loadHousehold();
     fresh.pastShifts = (fresh.pastShifts || []).slice(0, 19);
     if (fresh.activeShift) fresh.pastShifts.unshift(fresh.activeShift);
@@ -6148,8 +6241,14 @@ a:focus:not(:focus-visible) { outline: none; }
     if (missed.length) {
       toast("Shift ended · Care Accountability has a follow-up");
       setTimeout(() => openAcctModal(), 400);
+    } else if (mode === "none") {
+      toast("Clocked out");
+    } else if (wantsLiveLimbUpdates(mode) && !wantsEndShiftLog(mode)) {
+      toast("Clocked out · parents had live updates");
+    } else if (wantsEndShiftLog(mode) && wantsLiveLimbUpdates(mode)) {
+      toast("Clocked out · live updates and summary sent");
     } else {
-      toast(h.limbUpdateMode === "realtime" ? "Clocked out · parents had live updates" : "Clocked out · log sent to parents");
+      toast("Clocked out · log sent to parents");
     }
   }
   function requireLimbClock(action) {
@@ -7202,11 +7301,8 @@ a:focus:not(:focus-visible) { outline: none; }
       </div>
       <p class="field-note" style="margin-top:-4px;margin-bottom:8px">Hide this if you only want Limbs to log. You can turn it back on anytime. Limbs always see tracking.</p>
       <label class="field-label">Limb care updates</label>
-      <div class="chip-row wrap" id="set-update-chips">
-        <button type="button" class="date-chip${profile.limbUpdateMode==="realtime"?" active":""}" data-upd="realtime">Real-time updates</button>
-        <button type="button" class="date-chip${profile.limbUpdateMode!=="realtime"?" active":""}" data-upd="endshift">Log after they clock out</button>
-      </div>
-      <p class="field-note">Real-time sends each log to your Care inbox. Otherwise you get one summary when they clock out.</p>
+      <div class="chip-row wrap" id="set-update-chips">${limbUpdateChipsHtml(profile.limbUpdateMode)}</div>
+      <p class="field-note">Real-time: each log as it happens. After clock-out: one summary. Both: those together. None: no care logs. You can also change this when a Limb clocks in.</p>
       <div class="settings-row">
         <span>Accountability Fee</span>
         <div class="toggle${loadHousehold().accountabilityFee ? " on" : ""}" id="tog-acct-fee"></div>
@@ -7324,11 +7420,8 @@ a:focus:not(:focus-visible) { outline: none; }
     });
     $$("#set-update-chips .date-chip").forEach((c) => {
       c.addEventListener("click", () => {
-        profile.limbUpdateMode = c.dataset.upd === "realtime" ? "realtime" : "endshift";
-        saveProfile();
-        syncHouseholdFromParent();
+        setLimbUpdateMode(c.dataset.upd);
         renderSettings();
-        toast(profile.limbUpdateMode === "realtime" ? "You'll get live Limb logs in Care inbox" : "You'll get the log when they clock out");
       });
     });
     $("#set-scripture-time")?.addEventListener("change", () => {
@@ -7863,19 +7956,20 @@ a:focus:not(:focus-visible) { outline: none; }
     const body = $("#inbox-body");
     if (!body) return;
     if (!parentInbox.length) {
-      body.innerHTML = `<div class="cal-empty">No care summaries yet.<br>When a Limb finishes a shift, their snapshot appears here with timestamps.</div>`;
+      body.innerHTML = `<div class="cal-empty">No care notes yet.<br>When a Limb clocks in, you’ll get a “being watched” alert here and can choose live updates, a clock-out log, both, or none.</div>`;
       openModal("inbox");
       return;
     }
     body.innerHTML = parentInbox
       .map((item) => {
         const preview = item.note || (item.events && item.events[0] ? item.events[0].label : "Care snapshot");
+        const kindLabel = item.kind === "shift-start" ? "being watched" : item.kind === "live" ? "live update" : "shift summary";
         return `<button type="button" class="inbox-item${item.read ? "" : " unread"}" data-id="${item.id}">
           <div class="inbox-item-top">
             <span class="inbox-from">${escapeHtml(item.from)}</span>
             <span class="inbox-when">${formatStamp(item.sentAt)}</span>
           </div>
-          <div class="inbox-title">${escapeHtml((item.childNames || []).join(", ") || "Child")} · shift summary</div>
+          <div class="inbox-title">${escapeHtml((item.childNames || []).join(", ") || "Child")} · ${kindLabel}</div>
           <div class="inbox-preview">${escapeHtml(preview)}</div>
           <div class="inbox-preview" style="margin-top:4px;font-size:11px">${formatStamp(item.start)} → ${formatStamp(item.end)}</div>
         </button>`;
@@ -7913,11 +8007,63 @@ a:focus:not(:focus-visible) { outline: none; }
     if (item.note) {
       html += `<div class="care-doc-section"><h4>Notes</h4><div class="care-doc-main">${escapeHtml(item.note)}</div></div>`;
     }
-    html += `<div class="care-doc-stamp">Accountability snapshot · In the Middle of the [Mess]age</div>
-      <button type="button" class="btn-primary full" id="inbox-back-list" style="margin-top:12px">← Back to inbox</button>
+    html += `<div class="care-doc-stamp">Accountability snapshot · In the Middle of the [Mess]age</div>`;
+    if (!isLimbRole()) {
+      html += `<div class="settings-sec" style="margin-top:16px">Limb care updates</div>
+        <p class="field-note" style="margin-top:0">Now: ${escapeHtml(limbUpdateModeLabel(currentLimbUpdateMode()))}. Change anytime.</p>
+        <div class="chip-row wrap" id="inbox-update-chips">${limbUpdateChipsHtml()}</div>`;
+    }
+    html += `<button type="button" class="btn-primary full" id="inbox-back-list" style="margin-top:12px">← Back to inbox</button>
     </div>`;
     $("#inbox-body").innerHTML = html;
     $("#inbox-back-list")?.addEventListener("click", openInbox);
+    $$("#inbox-update-chips .date-chip").forEach((c) => {
+      c.addEventListener("click", () => {
+        setLimbUpdateMode(c.dataset.upd);
+        openInboxItem(id);
+      });
+    });
+  }
+
+  function openWatchAlert(shift) {
+    if (isLimbRole() || document.body.classList.contains("is-guest")) return;
+    const s = shift || (loadHousehold().activeShift);
+    if (!s) return;
+    const who = s.limbName || s.from || "A Limb";
+    const kids = (s.childNames && s.childNames.length) ? s.childNames.join(", ") : (typeof displayChildName === "function" ? displayChildName({ formal: true }) : "your child");
+    const when = s.startedAt || s.start || s.sentAt || "";
+    const sub = $("#watch-alert-sub");
+    if (sub) sub.textContent = who + " clocked in" + (when && typeof formatStamp === "function" ? " · " + formatStamp(when) : "");
+    const body = $("#watch-alert-body");
+    if (body) body.textContent = who + " is watching " + kids + ". Choose what you want from this Limb. You can change this anytime in Settings.";
+    const chips = $("#watch-update-chips");
+    if (chips) chips.innerHTML = limbUpdateChipsHtml();
+    const note = $("#watch-update-note");
+    if (note) note.textContent = "Current: " + limbUpdateModeLabel(currentLimbUpdateMode()) + ".";
+    $$("#watch-update-chips .date-chip").forEach((c) => {
+      c.addEventListener("click", () => {
+        $$("#watch-update-chips .date-chip").forEach((x) => x.classList.toggle("active", x === c));
+      });
+    });
+    openModal("watch-alert");
+  }
+  function saveWatchAlertChoice() {
+    const picked = $("#watch-update-chips .date-chip.active")?.dataset?.upd;
+    if (picked) setLimbUpdateMode(picked);
+    closeModal("watch-alert");
+  }
+  function maybeShowWatchAlert() {
+    if (isLimbRole() || document.body.classList.contains("is-guest") || !currentAccount) return;
+    const h = loadHousehold();
+    const s = h.activeShift && !h.activeShift.endedAt ? h.activeShift : null;
+    if (!s) return;
+    let seen = {};
+    try { seen = JSON.parse(sessionStorage.getItem("mh_watch_seen") || "{}"); } catch (e) {}
+    if (seen[s.id]) return;
+    if (document.querySelector(".modal-overlay:not([hidden])")) return;
+    seen[s.id] = 1;
+    try { sessionStorage.setItem("mh_watch_seen", JSON.stringify(seen)); } catch (e) {}
+    openWatchAlert(s);
   }
 
 
@@ -9132,6 +9278,8 @@ a:focus:not(:focus-visible) { outline: none; }
     });
     $("#go-track")?.addEventListener("click", () => showTab("track"));
     $("#dev-peek-close")?.addEventListener("click", () => { const p = $("#dev-peek"); if (p) p.hidden = true; });
+    $("#watch-alert-save")?.addEventListener("click", saveWatchAlertChoice);
+    $("#watch-alert-keep")?.addEventListener("click", () => closeModal("watch-alert"));
     $("#dev-refresh")?.addEventListener("click", () => refreshDevDashboard());
     $("#dev-retry-outbox")?.addEventListener("click", async () => {
       try {
@@ -9173,6 +9321,13 @@ a:focus:not(:focus-visible) { outline: none; }
     setInterval(() => {
       if (isLimbRole() && limbCanTrack()) checkMissedCareTasks();
     }, 60000);
+    setInterval(() => {
+      if (isLimbRole() || !currentAccount) return;
+      maybeShowWatchAlert();
+      if (typeof pullVault === "function" && cloudToken) {
+        pullVault().then(() => maybeShowWatchAlert()).catch(() => {});
+      }
+    }, 12000);
 
     // Subtabs
     $$(".subtab").forEach((s) => {
