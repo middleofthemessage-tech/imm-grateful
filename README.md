@@ -4,6 +4,8 @@ A break for your brain — care tracking, village help, and safety for the messy
 
 This is a static site. Open `index.html` locally, or deploy the folder to Netlify, Vercel, or GitHub Pages.
 
+**Live:** https://middleofthemessage-tech.github.io/imm-grateful/
+
 ## Repo
 
 https://github.com/middleofthemessage-tech/imm-grateful
