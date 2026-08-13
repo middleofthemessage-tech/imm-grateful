@@ -319,7 +319,9 @@ body:has(#screen-auth.active) .corner-mark {
   .recall-source-dir { grid-template-columns: 1fr 1fr; }
 }
 .recall-source-card {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   text-align: left;
   text-decoration: none;
   color: inherit;
@@ -327,6 +329,14 @@ body:has(#screen-auth.active) .corner-mark {
   border: 1.5px solid var(--sage-pale);
   border-radius: 14px;
   padding: 12px;
+}
+.recall-source-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--cream);
 }
 .recall-source-card strong { display: block; font-size: 13px; margin-bottom: 3px; }
 .recall-source-card span {
@@ -2671,7 +2681,7 @@ a:focus:not(:focus-visible) { outline: none; }
     <section id="screen-app" class="screen">
       <header class="app-header">
         <div class="header-brand">
-          <img src="logo-main.jpg" alt="In the Middle of the [Mess]age" class="header-logo-mark" />
+          <img src="clipart/app.jpg" alt="In the Middle of the [Mess]age" class="header-logo-mark" />
           <span class="header-wordmark">In the Middle of the <b>[Mess]</b>age</span>
         </div>
         <div class="header-actions">
@@ -3598,7 +3608,7 @@ a:focus:not(:focus-visible) { outline: none; }
 
     <!-- Floating logo mark -->
     <a href="#" id="corner-mark" class="corner-mark" title="In the Middle of the [Mess]age" aria-label="In the Middle of the [Mess]age">
-      <img src="logo-main.jpg" alt="In the Middle of the [Mess]age" />
+      <img src="clipart/app.jpg" alt="In the Middle of the [Mess]age" />
     </a>
 
     <div class="modal-overlay" id="modal-acct" hidden>
@@ -3745,6 +3755,7 @@ a:focus:not(:focus-visible) { outline: none; }
       website: "https://www.cpsc.gov/Recalls",
       api: "https://www.saferproducts.gov/RestWebServices/Recall",
       notes: "Best official source for baby products. Has free public API (JSON/XML).",
+      icon: "clipart/cpsc.jpg",
     },
     {
       id: "fda",
@@ -3754,6 +3765,7 @@ a:focus:not(:focus-visible) { outline: none; }
       website: "https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts",
       rss: "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/food-safety-recalls/rss.xml",
       notes: "Primary source for formula and food recalls. Also has openFDA APIs.",
+      icon: "clipart/fda.jpg",
     },
     {
       id: "usda",
@@ -3763,6 +3775,7 @@ a:focus:not(:focus-visible) { outline: none; }
       website: "https://www.fsis.usda.gov/recalls",
       api: "https://www.fsis.usda.gov/fsis/api/recall/v/1",
       notes: "Official source for meat/poultry recalls. Has free API.",
+      icon: "clipart/usda.jpg",
     },
     {
       id: "recalls-gov",
@@ -3771,6 +3784,7 @@ a:focus:not(:focus-visible) { outline: none; }
       description: "One-stop portal that combines CPSC, FDA, USDA, NHTSA and others",
       website: "https://www.recalls.gov",
       notes: "Good overview page, but better to pull directly from individual agencies for accuracy.",
+      icon: "clipart/recalls-gov.jpg",
     },
     {
       id: "nhtsa",
@@ -3780,6 +3794,7 @@ a:focus:not(:focus-visible) { outline: none; }
       website: "https://www.nhtsa.gov/recalls",
       api: "https://api.nhtsa.gov/recalls/recallsByVehicle",
       notes: "Essential for car seat recalls.",
+      icon: "clipart/nhtsa.jpg",
     },
     {
       id: "saferproducts",
@@ -3788,6 +3803,7 @@ a:focus:not(:focus-visible) { outline: none; }
       description: "Public database of consumer complaints and unsafe product reports",
       website: "https://www.saferproducts.gov",
       notes: "Useful for early warnings before official recalls.",
+      icon: "clipart/saferproducts.jpg",
     },
     {
       id: "aap",
@@ -3796,6 +3812,7 @@ a:focus:not(:focus-visible) { outline: none; }
       description: "Pediatricians’ highlights of important child product and health alerts",
       website: "https://www.aap.org",
       notes: "Not a raw data source, but excellent for trusted summaries.",
+      icon: "clipart/aap.jpg",
     },
     {
       id: "cdc",
@@ -3804,6 +3821,7 @@ a:focus:not(:focus-visible) { outline: none; }
       description: "Foodborne illness outbreaks and health warnings",
       website: "https://www.cdc.gov/foodsafety",
       notes: "Important when recalls are linked to actual outbreaks.",
+      icon: "clipart/cdc.jpg",
     },
   ];
 
@@ -6345,9 +6363,12 @@ a:focus:not(:focus-visible) { outline: none; }
     root.innerHTML = RECALL_SOURCES.map(
       (s) => `
       <a class="recall-source-card" href="${escapeHtml(s.website)}" target="_blank" rel="noopener">
-        <span>${escapeHtml(s.category)}</span>
-        <strong>${escapeHtml(s.name)}</strong>
-        <p>${escapeHtml(s.description)}</p>
+        ${s.icon ? `<img class="recall-source-icon" src="${escapeHtml(s.icon)}" alt="" />` : ""}
+        <div>
+          <span>${escapeHtml(s.category)}</span>
+          <strong>${escapeHtml(s.name)}</strong>
+          <p>${escapeHtml(s.description)}</p>
+        </div>
       </a>`
     ).join("");
   }

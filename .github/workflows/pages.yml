@@ -23,8 +23,9 @@ jobs:
 
       - name: Prepare static files
         run: |
-          mkdir -p _site
+          mkdir -p _site/clipart
           cp index.html 404.html favicon.svg logo-main.jpg manifest.json robots.txt sitemap.xml _site/
+          cp clipart/*.jpg _site/clipart/
           touch _site/.nojekyll
 
       - name: Setup Pages
