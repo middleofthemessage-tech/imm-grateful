@@ -1,7 +1,7 @@
 const mail = require("./_mail");
 
 const OWNER_PHONE = "+17703168593";
-const APP_VERSION = "2026.08.13.2";
+const APP_VERSION = "2026.08.14.1";
 const DAILY_CAP = 20;
 
 const US_GATES = [

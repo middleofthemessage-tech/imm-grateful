@@ -62,7 +62,7 @@ function limbEmailText(name) {
   ].join("\n");
 }
 
-function wrapHtml(title, bodyText) {
+function wrapHtml(title, bodyText, kicker) {
   const paras = String(bodyText)
     .split("\n\n")
     .map((block) => {
@@ -85,7 +85,7 @@ function wrapHtml(title, bodyText) {
   return [
     "<div style=\"font-family:Georgia,serif;background:#FBF6F0;padding:24px\">",
     "<div style=\"max-width:560px;margin:0 auto;background:#fff;border:1px solid #E8E0D8;border-radius:16px;padding:28px\">",
-    "<p style=\"margin:0 0 4px;color:#5C7D6A;font-size:12px;letter-spacing:.08em;text-transform:uppercase\">Account confirmed</p>",
+    "<p style=\"margin:0 0 4px;color:#5C7D6A;font-size:12px;letter-spacing:.08em;text-transform:uppercase\">" + (kicker || "Account confirmed") + "</p>",
     "<h1 style=\"margin:0 0 16px;font-size:22px;color:#2C2C2C\">" + title + "</h1>",
     paras,
     "</div></div>",
@@ -135,4 +135,63 @@ async function sendWelcomeAccount(user, db) {
   return results;
 }
 
-module.exports = { welcomeCopy, sendWelcomeAccount, APP_URL };
+function updateCopy(name) {
+  const who = firstNameOf({ firstName: name });
+  const text = [
+    "Hi " + who + ",",
+    "",
+    "In the Middle of the [Mess]age has a new update.",
+    "",
+    "What’s new",
+    "• Two parents can connect one home and share tracking, reminders, calendar, and Villager activity.",
+    "• Helpers are now called Villagers.",
+    "• Speak works on every page for voice commands and care logs.",
+    "• The app greets you by name, with different encouragement for moms and dads.",
+    "",
+    "Open the app:",
+    APP_URL,
+    "",
+    "In the Middle of the [Mess]age",
+    "A break for your brain.",
+  ].join("\n");
+  return {
+    subject: "IMM was just updated — what’s new",
+    text,
+    html: wrapHtml("App update", text, "What's new"),
+    smsText: "Hi " + who + ", IMM was just updated. Parents can share one home now. Open " + APP_URL,
+  };
+}
+
+async function notifyUsersOfUpdate(db) {
+  const meta = sms.ensureMeta(db);
+  if (meta.notifiedVersion === sms.APP_VERSION) {
+    return { skipped: true, queued: 0, version: sms.APP_VERSION };
+  }
+  const users = Array.isArray(db.users) ? db.users : [];
+  const cutoff = Date.now() - 15 * 60 * 1000;
+  let queued = 0;
+  users.forEach((user) => {
+    if (user.createdAt && Date.parse(user.createdAt) > cutoff) return;
+    const copy = updateCopy(user.firstName);
+    if (user.email) {
+      outbox.enqueue(db, { kind: "email", to: user.email, subject: copy.subject, text: copy.text, html: copy.html });
+      queued += 1;
+    }
+    if (user.phone) {
+      outbox.enqueue(db, { kind: "sms", to: user.phone, text: copy.smsText });
+      queued += 1;
+    }
+  });
+  const ownerInList = users.some((u) => sms.cleanPhone(u.phone).slice(-10) === "7703168593");
+  if (!ownerInList) {
+    const copy = updateCopy("there");
+    outbox.enqueue(db, { kind: "sms", to: sms.OWNER_PHONE, text: copy.smsText });
+    queued += 1;
+  }
+  meta.notifiedVersion = sms.APP_VERSION;
+  meta.updateQueuedAt = new Date().toISOString();
+  meta.updateQueued = queued;
+  return { skipped: false, queued, version: sms.APP_VERSION };
+}
+
+module.exports = { welcomeCopy, sendWelcomeAccount, notifyUsersOfUpdate, APP_URL };

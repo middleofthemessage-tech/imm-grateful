@@ -23,7 +23,7 @@ function enqueue(db, item) {
     via: "",
   };
   meta.outbox.unshift(row);
-  meta.outbox = meta.outbox.slice(0, 80);
+  meta.outbox = meta.outbox.slice(0, 400);
   return row;
 }
 
